@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>cups · Tasas BCV</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Calculadora de dólares, euros y bolívares con la tasa oficial del BCV.">
+<meta name="theme-color" content="#ffffff">
+<meta name="color-scheme" content="light">
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon-64.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="cups">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="format-detection" content="telephone=no">
+
+<link rel="preload" href="fonts/manrope.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-cur="USD">
+<div class="app">
+
+  <header class="header">
+    <img class="logo" src="icons/icon-192.png" width="44" height="44" alt="">
+    <h1 class="brand">cups</h1>
+    <button class="icon-btn" id="refresh" type="button" aria-label="Actualizar tasas">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M19.5 3v4.5H15"/>
+      </svg>
+    </button>
+  </header>
+
+  <section class="datebar-wrap" aria-label="Fecha de la tasa">
+    <div class="datebar">
+      <button class="nav-btn" id="prev" type="button" aria-label="Tasa del día anterior">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5 7.5 12l7 7"/></svg>
+      </button>
+
+      <div class="date-center">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="4.5" width="18" height="16" rx="3.5"/><path d="M3 10h18M8 2.5v4M16 2.5v4"/>
+        </svg>
+        <span class="date-text">
+          <span class="date-label" id="dateLabel">Cargando…</span>
+          <span class="date-value" id="dateValue">—</span>
+        </span>
+        <input class="date-input" id="datePick" type="date" aria-label="Elegir fecha de la tasa">
+      </div>
+
+      <button class="nav-btn" id="next" type="button" aria-label="Tasa del día siguiente">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9.5 5 7 7-7 7"/></svg>
+        <span class="badge" id="badge" hidden></span>
+      </button>
+    </div>
+    <button class="link-btn" id="goToday" type="button" hidden>Volver a la tasa de hoy</button>
+  </section>
+
+  <section class="tiles" role="tablist" aria-label="Moneda">
+    <button class="tile" role="tab" data-cur="USD" aria-selected="true" type="button">
+      <span class="tile-top"><span class="coin coin-usd">$</span><span class="tile-name">Dólar</span></span>
+      <span class="tile-rate" id="rateUSD">—</span>
+      <span class="tile-date" id="dateUSD"></span>
+    </button>
+    <button class="tile" role="tab" data-cur="EUR" aria-selected="false" type="button">
+      <span class="tile-top"><span class="coin coin-eur">€</span><span class="tile-name">Euro</span></span>
+      <span class="tile-rate" id="rateEUR">—</span>
+      <span class="tile-date" id="dateEUR"></span>
+    </button>
+  </section>
+
+  <section class="calc" aria-label="Calculadora">
+    <div class="row" data-field="foreign">
+      <div class="row-main">
+        <div class="row-label">
+          <span class="coin coin-sm" id="foreignCoin">$</span>
+          <label for="foreignInput" id="foreignName">Dólar</label>
+          <span class="copied" id="copiedForeign" aria-live="polite"></span>
+        </div>
+        <input class="amount" id="foreignInput" type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="0,00" maxlength="14">
+      </div>
+      <button class="copy-btn" id="copyForeign" type="button" aria-label="Copiar Dólar" disabled></button>
+    </div>
+
+    <div class="sep"><span class="rate-pill" id="ratePill">—</span></div>
+
+    <div class="row" data-field="bs">
+      <div class="row-main">
+        <div class="row-label">
+          <span class="coin coin-sm coin-bs">Bs</span>
+          <label for="bsInput">Bolívares</label>
+          <span class="copied" id="copiedBs" aria-live="polite"></span>
+        </div>
+        <input class="amount" id="bsInput" type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="0,00" maxlength="14">
+      </div>
+      <button class="copy-btn" id="copyBs" type="button" aria-label="Copiar Bolívares" disabled></button>
+    </div>
+  </section>
+
+  <p class="status" id="status" role="status" hidden></p>
+
+  <aside class="install" id="install" hidden>
+    <div class="install-text">
+      <strong>Instala cups en tu teléfono</strong>
+      <span id="installBody"></span>
+    </div>
+    <button class="install-action" id="installBtn" type="button" hidden>Instalar</button>
+    <button class="install-close" id="installClose" type="button" aria-label="Cerrar aviso">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </aside>
+
+  <footer class="foot">Tasa oficial BCV · se actualiza al abrir la app</footer>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
