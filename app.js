@@ -50,6 +50,18 @@
     if (Array.isArray(live) && live.length === 2) state.usdtLive = live;
   } catch (_) { /* sin almacenamiento: seguimos con memoria */ }
 
+  /* ---------- Tema (claro / oscuro) ---------- */
+  const themeBtn = $("theme");
+  function applyTheme(t, save) {
+    document.documentElement.dataset.theme = t;
+    const m = document.querySelector('meta[name="theme-color"]');
+    if (m) m.content = t === "dark" ? "#0b1220" : "#ffffff";
+    themeBtn.setAttribute("aria-label", t === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro");
+    if (save) { try { localStorage.setItem("cups.theme", t); } catch (_) {} }
+  }
+  applyTheme(document.documentElement.dataset.theme || "light", false);
+  themeBtn.addEventListener("click", () => applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark", true));
+
   /* ---------- Fechas ---------- */
   const pad2 = (n) => String(n).padStart(2, "0");
   const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
