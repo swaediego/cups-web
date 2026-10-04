@@ -94,9 +94,11 @@ button:disabled { cursor: default; }
   transition: transform 0.15s var(--ease), background 0.2s;
 }
 .icon-btn:active, .nav-btn:active:not(:disabled) { transform: scale(0.92); }
-.icon-btn .sun { display: none; }
-:root[data-theme="dark"] .icon-btn .moon { display: none; }
-:root[data-theme="dark"] .icon-btn .sun { display: block; }
+/* El icono muestra el modo elegido: automático (por defecto), claro u oscuro */
+.icon-btn .sun, .icon-btn .moon { display: none; }
+:root[data-mode="light"] .icon-btn .auto, :root[data-mode="dark"] .icon-btn .auto { display: none; }
+:root[data-mode="light"] .icon-btn .sun { display: block; }
+:root[data-mode="dark"] .icon-btn .moon { display: block; }
 .header { gap: 10px; }
 .icon-btn.loading svg { animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }

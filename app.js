@@ -51,16 +51,29 @@
   } catch (_) { /* sin almacenamiento: seguimos con memoria */ }
 
   /* ---------- Tema (claro / oscuro) ---------- */
+  // Tres modos: auto (sigue al teléfono / navegador y cambia con él), claro u oscuro
   const themeBtn = $("theme");
-  function applyTheme(t, save) {
-    document.documentElement.dataset.theme = t;
+  const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
+  const THEME_NAMES = { auto: "automático", light: "claro", dark: "oscuro" };
+  let themeMode = "auto";
+  try { const t = localStorage.getItem("cups.theme"); if (t === "light" || t === "dark") themeMode = t; } catch (_) {}
+  function applyTheme() {
+    const dark = themeMode === "dark" || (themeMode === "auto" && systemDark.matches);
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+    document.documentElement.dataset.mode = themeMode;
     const m = document.querySelector('meta[name="theme-color"]');
-    if (m) m.content = t === "dark" ? "#0b1220" : "#ffffff";
-    themeBtn.setAttribute("aria-label", t === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro");
-    if (save) { try { localStorage.setItem("cups.theme", t); } catch (_) {} }
+    if (m) m.content = dark ? "#0b1220" : "#ffffff";
+    const label = "Tema: " + THEME_NAMES[themeMode];
+    themeBtn.setAttribute("aria-label", label);
+    themeBtn.title = label;
   }
-  applyTheme(document.documentElement.dataset.theme || "light", false);
-  themeBtn.addEventListener("click", () => applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark", true));
+  applyTheme();
+  systemDark.addEventListener("change", () => { if (themeMode === "auto") applyTheme(); });
+  themeBtn.addEventListener("click", () => {
+    themeMode = themeMode === "auto" ? "light" : themeMode === "light" ? "dark" : "auto";
+    try { if (themeMode === "auto") localStorage.removeItem("cups.theme"); else localStorage.setItem("cups.theme", themeMode); } catch (_) {}
+    applyTheme();
+  });
 
   /* ---------- Fechas ---------- */
   const pad2 = (n) => String(n).padStart(2, "0");
