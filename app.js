@@ -1,15 +1,15 @@
 (() => {
   "use strict";
 
-  const API = {
-    USD: "https://ve.dolarapi.com/v1/historicos/dolares/oficial",
-    EUR: "https://ve.dolarapi.com/v1/historicos/euros/oficial",
-  };
   const CUR = {
-    USD: { label: "Dólar", symbol: "$" },
-    EUR: { label: "Euro", symbol: "€" },
+    USD: { label: "Dólar", symbol: "$", url: "https://ve.dolarapi.com/v1/historicos/dolares/oficial", official: true },
+    EUR: { label: "Euro", symbol: "€", url: "https://ve.dolarapi.com/v1/historicos/euros/oficial", official: true },
+    // Promedio USDT (mercado paralelo / P2P); se actualiza durante el día
+    USDT: { label: "USDT", symbol: "₮", url: "https://ve.dolarapi.com/v1/historicos/dolares/paralelo", official: false },
   };
+  const LIVE_URL = "https://ve.dolarapi.com/v1/dolares";
   const STORE = "cups.history.v1";
+  const STORE_LIVE = "cups.usdtlive.v1";
 
   const $ = (id) => document.getElementById(id);
   const el = {
@@ -17,7 +17,10 @@
     dateLabel: $("dateLabel"), dateValue: $("dateValue"), datePick: $("datePick"),
     foreignInput: $("foreignInput"), bsInput: $("bsInput"), foreignCoin: $("foreignCoin"), foreignName: $("foreignName"),
     copyForeign: $("copyForeign"), copyBs: $("copyBs"), copiedForeign: $("copiedForeign"), copiedBs: $("copiedBs"),
-    ratePill: $("ratePill"), status: $("status"),
+    ratePill: $("ratePill"), status: $("status"), clearConv: $("clearConv"),
+    modeBtns: document.querySelectorAll(".mode-btn"), conv: $("conv"), pad: $("pad"),
+    change: $("change"), changeTop: $("changeTop"), changeMain: $("changeMain"), changePct: $("changePct"), changeEmpty: $("changeEmpty"), changeBody: $("changeBody"),
+    dir: $("dir"), padRate: $("padRate"), expr: $("expr"), converted: $("converted"), keys: $("keys"),
   };
 
   const ICON_COPY = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8.5" y="8.5" width="12" height="12" rx="3.2"/><path d="M15.5 4.5h-7a4 4 0 0 0-4 4v7"/></svg>';
@@ -27,22 +30,29 @@
 
   /* ---------- Estado ---------- */
   const state = {
-    history: { USD: [], EUR: [] }, // [[ "YYYY-MM-DD", valor ], ...] ascendente
+    history: { USD: [], EUR: [], USDT: [] }, // [[ "YYYY-MM-DD", valor ], ...] ascendente
+    usdtLive: null, // [ fecha, valor ] del promedio USDT de ahora
     currency: "USD",
     pinned: null, // fecha elegida; null = seguir la tasa vigente de hoy
     lastEdited: "foreign",
+    mode: "convert", // convert | calc
+    calcInBs: true, // la calculadora trabaja en bolívares y muestra la divisa; false: al revés
+    expr: "",
+    justEvaluated: false,
     loading: false,
     error: null,
   };
 
   try {
     const saved = JSON.parse(localStorage.getItem(STORE) || "null");
-    if (saved && saved.USD && saved.EUR) state.history = saved;
+    if (saved && saved.USD && saved.EUR) state.history = { USDT: [], ...saved };
+    const live = JSON.parse(localStorage.getItem(STORE_LIVE) || "null");
+    if (Array.isArray(live) && live.length === 2) state.usdtLive = live;
   } catch (_) { /* sin almacenamiento: seguimos con memoria */ }
 
   /* ---------- Fechas ---------- */
-  const pad = (n) => String(n).padStart(2, "0");
-  const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  const pad2 = (n) => String(n).padStart(2, "0");
+  const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
   const toDate = (iso) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d); };
   const fmtLong = new Intl.DateTimeFormat("es-VE", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
   const fmtShort = new Intl.DateTimeFormat("es-VE", { day: "numeric", month: "short" });
@@ -50,6 +60,7 @@
   const longDate = (iso) => clean(fmtLong.format(toDate(iso)));
   const shortDate = (iso) => clean(fmtShort.format(toDate(iso)));
 
+  // Fechas de publicación del BCV (el USDT no marca fechas de navegación)
   const dates = () => [...new Set([...state.history.USD, ...state.history.EUR].map((e) => e[0]))].sort();
   const currentDate = () => {
     const d = dates(), t = todayISO();
@@ -61,10 +72,23 @@
   const nextDate = () => { const s = selectedDate(); return s ? dates().find((d) => d > s) || null : null; };
 
   function rateFor(c) {
+    if (c === "USDT" && !state.pinned && state.usdtLive) return { date: state.usdtLive[0], value: state.usdtLive[1] };
     const s = selectedDate(), list = state.history[c];
     if (!s || !list.length) return null;
     for (let i = list.length - 1; i >= 0; i--) if (list[i][0] <= s) return { date: list[i][0], value: list[i][1] };
     return { date: list[0][0], value: list[0][1] };
+  }
+
+  // Cambio frente a la publicación anterior de la misma moneda
+  function changeFor(c) {
+    const r = rateFor(c);
+    if (!r) return null;
+    const list = state.history[c];
+    let prev = null;
+    for (let i = list.length - 1; i >= 0; i--) if (list[i][0] < r.date) { prev = list[i]; break; }
+    if (!prev) return null;
+    const diff = r.value - prev[1];
+    return { diff, pct: (diff / prev[1]) * 100, since: prev[0] };
   }
 
   /* ---------- Números ---------- */
@@ -85,14 +109,23 @@
   }
 
   /* ---------- Datos ---------- */
-  async function fetchRates(c) {
-    const res = await fetch(API[c], { cache: "no-cache" });
+  async function getJSON(url) {
+    const res = await fetch(url, { cache: "no-cache" });
     if (!res.ok) throw new Error("HTTP " + res.status);
-    const arr = await res.json();
+    return res.json();
+  }
+
+  async function fetchRates(c) {
+    const arr = await getJSON(CUR[c].url);
     return arr
       .filter((o) => o.promedio != null && o.fecha)
       .map((o) => [String(o.fecha).slice(0, 10), Number(o.promedio)])
       .sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  }
+
+  async function fetchLive() {
+    const o = (await getJSON(LIVE_URL)).find((x) => x.fuente === "paralelo" && x.promedio != null);
+    return o ? [todayISO(), Number(o.promedio)] : null;
   }
 
   async function refresh() {
@@ -100,13 +133,22 @@
     state.loading = true;
     state.error = null;
     render();
-    try {
-      const [usd, eur] = await Promise.all([fetchRates("USD"), fetchRates("EUR")]);
-      state.history = { USD: usd, EUR: eur };
-      try { localStorage.setItem(STORE, JSON.stringify(state.history)); } catch (_) {}
-      recalc();
-    } catch (_) {
+    const keys = Object.keys(CUR);
+    const [fetched, live] = await Promise.all([
+      Promise.all(keys.map((c) => fetchRates(c).catch(() => null))),
+      fetchLive().catch(() => null),
+    ]);
+    const got = Object.fromEntries(keys.map((c, i) => [c, fetched[i]]));
+    if (!got.USD && !got.EUR) {
       state.error = dates().length ? "Sin conexión, usando las tasas guardadas" : "Sin conexión y sin tasas guardadas";
+    } else {
+      state.history = Object.fromEntries(keys.map((c) => [c, got[c] || state.history[c]]));
+      try { localStorage.setItem(STORE, JSON.stringify(state.history)); } catch (_) {}
+      if (live) {
+        state.usdtLive = live;
+        try { localStorage.setItem(STORE_LIVE, JSON.stringify(live)); } catch (_) {}
+      }
+      recalc();
     }
     state.loading = false;
     render();
@@ -142,18 +184,21 @@
     for (const c of Object.keys(CUR)) {
       const r = rateFor(c);
       $("rate" + c).textContent = r ? money.format(r.value) : "—";
-      $("date" + c).textContent = r ? shortDate(r.date) : "sin datos";
+      $("date" + c).textContent = !r ? "sin datos" : c === "USDT" && r.date === todayISO() ? "en vivo" : shortDate(r.date);
     }
     document.querySelectorAll(".tile").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.cur === cur)));
 
+    renderChange(cur);
+
     // Calculadora
     el.foreignCoin.textContent = CUR[cur].symbol;
-    el.foreignCoin.className = "coin coin-sm " + (cur === "USD" ? "coin-usd" : "coin-eur");
+    el.foreignCoin.className = "coin coin-sm coin-" + cur.toLowerCase();
     el.foreignName.textContent = CUR[cur].label;
     el.copyForeign.setAttribute("aria-label", "Copiar " + CUR[cur].label);
     const r = rateFor(cur);
     el.ratePill.textContent = r ? `1 ${CUR[cur].symbol} = Bs. ${money.format(r.value)}` : "—";
     syncCopyState();
+    renderMode();
 
     el.refresh.classList.toggle("loading", state.loading);
     el.refresh.disabled = state.loading;
@@ -161,11 +206,25 @@
     el.status.textContent = state.error || "";
   }
 
+  function renderChange(cur) {
+    const ch = changeFor(cur);
+    el.changeEmpty.hidden = !!ch;
+    el.changeBody.hidden = !ch;
+    if (!ch) { el.change.dataset.tone = "flat"; return; }
+    const up = ch.diff > 0.0049, down = ch.diff < -0.0049;
+    el.change.dataset.tone = up ? "up" : down ? "down" : "flat";
+    const verb = up ? "subió" : down ? "bajó" : "se mantuvo";
+    el.changeTop.textContent = `${CUR[cur].label} ${verb} vs. ${shortDate(ch.since)}`;
+    el.changeMain.textContent = `${up ? "▲ +" : down ? "▼ −" : "• "}${money.format(Math.abs(ch.diff))} Bs`;
+    el.changePct.textContent = `${up ? "+" : down ? "−" : ""}${money.format(Math.abs(ch.pct))}%`;
+  }
+
   function syncCopyState() {
     el.copyForeign.disabled = !el.foreignInput.value;
     el.copyBs.disabled = !el.bsInput.value;
     el.foreignInput.classList.toggle("long", el.foreignInput.value.length > 10);
     el.bsInput.classList.toggle("long", el.bsInput.value.length > 10);
+    el.clearConv.hidden = state.mode !== "convert" || !(el.foreignInput.value || el.bsInput.value);
   }
 
   /* ---------- Entradas ---------- */
@@ -178,6 +237,13 @@
   for (const i of [el.foreignInput, el.bsInput]) {
     i.addEventListener("keydown", (e) => { if (e.key === "Enter") i.blur(); });
   }
+
+  // Reiniciar a 0 de un solo toque
+  el.clearConv.addEventListener("click", () => {
+    el.foreignInput.value = "";
+    el.bsInput.value = "";
+    syncCopyState();
+  });
 
   // Cambiar de moneda mantiene los bolívares y recalcula la divisa
   document.querySelectorAll(".tile").forEach((t) =>
@@ -202,6 +268,124 @@
     pin([...d].reverse().find((x) => x <= day) || d[0]);
   });
   el.refresh.addEventListener("click", refresh);
+
+  /* ---------- Modo calculadora ---------- */
+  const OPS = "+−×÷";
+  const isOp = (ch) => OPS.includes(ch);
+  const lastNumber = () => (state.expr.match(/[\d,]*$/) || [""])[0];
+
+  // Evalúa con + − × ÷ (con precedencia). Ignora un operador final.
+  function evalExpr(src) {
+    let s = src;
+    while (s && isOp(s[s.length - 1])) s = s.slice(0, -1);
+    if (!s) return null;
+    const nums = [], ops = [];
+    let i = 0;
+    while (i < s.length) {
+      const neg = s[i] === "−";
+      if (neg) i++;
+      const st = i;
+      while (i < s.length && (/\d/.test(s[i]) || s[i] === ",")) i++;
+      const n = parseFloat(s.slice(st, i).replace(",", "."));
+      if (!Number.isFinite(n)) return null;
+      nums.push(neg ? -n : n);
+      if (i < s.length) ops.push(s[i++]);
+    }
+    for (let k = 0; k < ops.length;) {
+      if (ops[k] === "×" || ops[k] === "÷") {
+        nums[k] = ops[k] === "×" ? nums[k] * nums[k + 1] : nums[k] / nums[k + 1];
+        nums.splice(k + 1, 1);
+        ops.splice(k, 1);
+      } else k++;
+    }
+    let acc = nums[0];
+    ops.forEach((op, j) => { acc = op === "+" ? acc + nums[j + 1] : acc - nums[j + 1]; });
+    return Number.isFinite(acc) ? acc : null;
+  }
+
+  function press(k) {
+    const st = state;
+    if (k === "C") { st.expr = ""; st.justEvaluated = false; }
+    else if (k === "⌫") { if (st.justEvaluated) { st.expr = ""; st.justEvaluated = false; } else st.expr = st.expr.slice(0, -1); }
+    else if (k === "=") {
+      const v = evalExpr(st.expr);
+      if (v !== null) {
+        st.expr = v.toFixed(6).replace(/0+$/, "").replace(/\.$/, "").replace(".", ",").replace("-", "−");
+        st.justEvaluated = true;
+      }
+    } else if (isOp(k)) {
+      if (!st.expr) { if (k === "−") st.expr = k; }
+      else {
+        st.justEvaluated = false;
+        const last = st.expr[st.expr.length - 1];
+        st.expr = isOp(last) ? (st.expr.length === 1 ? st.expr : st.expr.slice(0, -1) + k) : st.expr + k;
+      }
+    } else if (k === ",") {
+      if (st.justEvaluated) { st.expr = ""; st.justEvaluated = false; }
+      const n = lastNumber();
+      if (n.includes(",") || st.expr.length >= 40) return;
+      st.expr += n ? "," : "0,";
+    } else { // dígitos y "00"
+      if (st.justEvaluated) { st.expr = ""; st.justEvaluated = false; }
+      if (st.expr.length + k.length > 40) return;
+      const n = lastNumber();
+      if (n === "0" && /^0+$/.test(k)) return;
+      st.expr = n === "0" ? st.expr.slice(0, -1) + (k.replace(/^0+/, "") || "0") : st.expr + k;
+    }
+    renderPad();
+  }
+
+  function renderPad() {
+    const cur = state.currency, r = rateFor(cur), inBs = state.calcInBs;
+    const fromSym = inBs ? "Bs" : CUR[cur].symbol, toSym = inBs ? CUR[cur].symbol : "Bs";
+    const shown = state.expr || "0";
+    el.expr.textContent = shown;
+    el.expr.dataset.size = shown.length > 20 ? "xs" : shown.length > 13 ? "s" : shown.length > 8 ? "m" : "l";
+    el.dir.textContent = `${fromSym} → ${toSym}`;
+    el.padRate.textContent = r ? `1 ${CUR[cur].symbol} = ${money.format(r.value)}` : "";
+    const v = evalExpr(state.expr);
+    const conv = v !== null && r ? (inBs ? v / r.value : v * r.value) : 0;
+    el.converted.textContent = `${toSym} ${money.format(conv)}`;
+    el.converted.dataset.to = inBs ? "foreign" : "bs";
+  }
+
+  function renderMode() {
+    const calc = state.mode === "calc";
+    el.conv.hidden = calc;
+    el.pad.hidden = !calc;
+    el.modeBtns.forEach((b) => b.setAttribute("aria-selected", String(b.dataset.mode === state.mode)));
+    el.clearConv.hidden = calc || !(el.foreignInput.value || el.bsInput.value);
+    if (calc) renderPad();
+  }
+
+  el.modeBtns.forEach((b) => b.addEventListener("click", () => { state.mode = b.dataset.mode; render(); }));
+
+  // Mantener pulsado ⌫ = reiniciar todo el monto de golpe
+  let holdTimer = null, held = false;
+  el.keys.addEventListener("pointerdown", (e) => {
+    const b = e.target.closest("button");
+    if (!b || b.dataset.k !== "⌫") return;
+    held = false;
+    holdTimer = setTimeout(() => { held = true; if (navigator.vibrate) navigator.vibrate(18); press("C"); }, 450);
+  });
+  for (const ev of ["pointerup", "pointerleave", "pointercancel"]) {
+    el.keys.addEventListener(ev, () => clearTimeout(holdTimer));
+  }
+  el.keys.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.k === "⌫" && held) { held = false; return; }
+    if (navigator.vibrate) navigator.vibrate(8);
+    if (b.dataset.k === "⇄") { state.calcInBs = !state.calcInBs; renderPad(); }
+    else press(b.dataset.k);
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (state.mode !== "calc" || e.ctrlKey || e.metaKey || e.altKey) return;
+    const map = { "*": "×", "/": "÷", x: "×", "-": "−", ".": ",", Enter: "=", Backspace: "⌫", Escape: "C", Delete: "C" };
+    const k = map[e.key] || e.key;
+    if (/^[0-9]$/.test(k) || [",", "+", "−", "×", "÷", "=", "⌫", "C"].includes(k)) { e.preventDefault(); press(k); }
+  });
 
   /* ---------- Copiar ---------- */
   async function copyText(text) {
