@@ -20,7 +20,7 @@
     ratePill: $("ratePill"), status: $("status"), clearConv: $("clearConv"),
     modeBtns: document.querySelectorAll(".mode-btn"), conv: $("conv"), pad: $("pad"),
     change: $("change"), changeTop: $("changeTop"), changeMain: $("changeMain"), changePct: $("changePct"), changeEmpty: $("changeEmpty"), changeBody: $("changeBody"),
-    dir: $("dir"), padRate: $("padRate"), expr: $("expr"), converted: $("converted"), keys: $("keys"),
+    dir: $("dir"), padRate: $("padRate"), expr: $("expr"), converted: $("converted"), keys: $("keys"), modes: document.querySelector(".modes"),
   };
 
   const ICON_COPY = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8.5" y="8.5" width="12" height="12" rx="3.2"/><path d="M15.5 4.5h-7a4 4 0 0 0-4 4v7"/></svg>';
@@ -35,6 +35,7 @@
     currency: "USD",
     pinned: null, // fecha elegida; null = seguir la tasa vigente de hoy
     lastEdited: "foreign",
+    dir: 0, // sentido del último cambio de fecha: -1 atrás, 1 adelante
     mode: "convert", // convert | calc
     calcInBs: true, // la calculadora trabaja en bolívares y muestra la divisa; false: al revés
     expr: "",
@@ -49,6 +50,19 @@
     const live = JSON.parse(localStorage.getItem(STORE_LIVE) || "null");
     if (Array.isArray(live) && live.length === 2) state.usdtLive = live;
   } catch (_) { /* sin almacenamiento: seguimos con memoria */ }
+
+  /* ---------- Movimiento ---------- */
+  let animReady = false; // la primera pintura no se anima (ya entra en escalera por CSS)
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  function replay(node, cls) { node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls); }
+  // Cambia el texto y, solo si realmente cambió, lo anima. dx > 0 entra desde la derecha, < 0 desde la izquierda.
+  function setText(node, text, dx = 0) {
+    if (node.textContent === text) return;
+    node.textContent = text;
+    if (!animReady || reduceMotion.matches) return;
+    node.style.setProperty("--dx", dx + "px");
+    replay(node, "tick");
+  }
 
   /* ---------- Tema (claro / oscuro) ---------- */
   // Tres modos: auto (sigue al teléfono / navegador y cambia con él), claro u oscuro
@@ -72,7 +86,9 @@
   themeBtn.addEventListener("click", () => {
     themeMode = themeMode === "auto" ? "light" : themeMode === "light" ? "dark" : "auto";
     try { if (themeMode === "auto") localStorage.removeItem("cups.theme"); else localStorage.setItem("cups.theme", themeMode); } catch (_) {}
-    applyTheme();
+    // Fundido entre temas con View Transitions (si el navegador lo soporta)
+    if (document.startViewTransition && !reduceMotion.matches) document.startViewTransition(applyTheme);
+    else applyTheme();
   });
 
   /* ---------- Fechas ---------- */
@@ -192,8 +208,8 @@
       else if (sel === current) label = sel === todayISO() ? "Tasa de hoy" : "Tasa vigente";
       else label = "Tasa anterior";
     }
-    el.dateLabel.textContent = state.loading && !sel ? "Cargando…" : label;
-    el.dateValue.textContent = sel ? longDate(sel) : "—";
+    setText(el.dateLabel, state.loading && !sel ? "Cargando…" : label, state.dir * 10);
+    setText(el.dateValue, sel ? longDate(sel) : "—", state.dir * 14);
     el.prev.disabled = !prevDate();
     el.next.disabled = !nextDate();
     el.badge.hidden = !(nextDate() && sel === current);
@@ -208,8 +224,8 @@
     // Tarjetas
     for (const c of Object.keys(CUR)) {
       const r = rateFor(c);
-      $("rate" + c).textContent = r ? money.format(r.value) : "—";
-      $("date" + c).textContent = !r ? "sin datos" : c === "USDT" && r.date === todayISO() ? "en vivo" : shortDate(r.date);
+      setText($("rate" + c), r ? money.format(r.value) : "—");
+      setText($("date" + c), !r ? "sin datos" : c === "USDT" && r.date === todayISO() ? "en vivo" : shortDate(r.date));
     }
     document.querySelectorAll(".tile").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.cur === cur)));
 
@@ -221,10 +237,11 @@
     el.foreignName.textContent = CUR[cur].label;
     el.copyForeign.setAttribute("aria-label", "Copiar " + CUR[cur].label);
     const r = rateFor(cur);
-    el.ratePill.textContent = r ? `1 ${CUR[cur].symbol} = Bs. ${money.format(r.value)}` : "—";
+    setText(el.ratePill, r ? `1 ${CUR[cur].symbol} = Bs. ${money.format(r.value)}` : "—");
     syncCopyState();
     renderMode();
 
+    state.dir = 0;
     el.refresh.classList.toggle("loading", state.loading);
     el.refresh.disabled = state.loading;
     el.status.hidden = !state.error;
@@ -239,9 +256,9 @@
     const up = ch.diff > 0.0049, down = ch.diff < -0.0049;
     el.change.dataset.tone = up ? "up" : down ? "down" : "flat";
     const verb = up ? "subió" : down ? "bajó" : "se mantuvo";
-    el.changeTop.textContent = `${CUR[cur].label} ${verb} vs. ${shortDate(ch.since)}`;
-    el.changeMain.textContent = `${up ? "▲ +" : down ? "▼ −" : "• "}${money.format(Math.abs(ch.diff))} Bs`;
-    el.changePct.textContent = `${up ? "+" : down ? "−" : ""}${money.format(Math.abs(ch.pct))}%`;
+    setText(el.changeTop, `${CUR[cur].label} ${verb} vs. ${shortDate(ch.since)}`);
+    setText(el.changeMain, `${up ? "▲ +" : down ? "▼ −" : "• "}${money.format(Math.abs(ch.diff))} Bs`);
+    setText(el.changePct, `${up ? "+" : down ? "−" : ""}${money.format(Math.abs(ch.pct))}%`);
   }
 
   function syncCopyState() {
@@ -281,7 +298,13 @@
   );
 
   /* ---------- Fechas: navegación ---------- */
-  function pin(d) { state.pinned = d === currentDate() ? null : d; recalc(); render(); }
+  function pin(d) {
+    const cur = selectedDate(), target = d || currentDate();
+    state.dir = cur && target && target !== cur ? (target < cur ? -1 : 1) : 0;
+    state.pinned = d === currentDate() ? null : d;
+    recalc();
+    render();
+  }
   el.prev.addEventListener("click", () => pin(prevDate()));
   el.next.addEventListener("click", () => pin(nextDate()));
   el.goToday.addEventListener("click", () => pin(null));
@@ -370,7 +393,7 @@
     el.padRate.textContent = r ? `1 ${CUR[cur].symbol} = ${money.format(r.value)}` : "";
     const v = evalExpr(state.expr);
     const conv = v !== null && r ? (inBs ? v / r.value : v * r.value) : 0;
-    el.converted.textContent = `${toSym} ${money.format(conv)}`;
+    setText(el.converted, `${toSym} ${money.format(conv)}`);
     el.converted.dataset.to = inBs ? "foreign" : "bs";
   }
 
@@ -379,11 +402,17 @@
     el.conv.hidden = calc;
     el.pad.hidden = !calc;
     el.modeBtns.forEach((b) => b.setAttribute("aria-selected", String(b.dataset.mode === state.mode)));
+    el.modes.dataset.mode = state.mode;
     el.clearConv.hidden = calc || !(el.foreignInput.value || el.bsInput.value);
     if (calc) renderPad();
   }
 
-  el.modeBtns.forEach((b) => b.addEventListener("click", () => { state.mode = b.dataset.mode; render(); }));
+  el.modeBtns.forEach((b) => b.addEventListener("click", () => {
+    if (state.mode === b.dataset.mode) return;
+    state.mode = b.dataset.mode;
+    render();
+    if (!reduceMotion.matches) replay(state.mode === "calc" ? el.pad : el.conv, "enter");
+  }));
 
   // Mantener pulsado ⌫ = reiniciar todo el monto de golpe
   let holdTimer = null, held = false;
@@ -486,7 +515,15 @@
   window.addEventListener("appinstalled", () => { installBox.hidden = true; });
 
   /* ---------- Arranque ---------- */
+  const appEl = document.querySelector(".app");
+  [...appEl.children].forEach((c, i) => c.style.setProperty("--i", i));
+  el.keys.querySelectorAll(".key").forEach((k, i) => k.style.setProperty("--i", i));
+  if (!reduceMotion.matches) {
+    appEl.classList.add("boot");
+    setTimeout(() => appEl.classList.remove("boot"), 1100); // luego no se repite al mostrar/ocultar secciones
+  }
   render();
+  requestAnimationFrame(() => { animReady = true; });
   refresh();
   // Al volver a la app (p. ej. al día siguiente) se vuelven a pedir las tasas
   let lastFetch = Date.now();

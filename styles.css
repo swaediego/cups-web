@@ -5,6 +5,11 @@
   font-display: swap;
 }
 
+/* Registradas para que el color de acento (dólar → euro → USDT) se interpole en toda la interfaz a la vez */
+@property --accent { syntax: "<color>"; inherits: true; initial-value: #ffb92e; }
+@property --accent-ink { syntax: "<color>"; inherits: true; initial-value: #8f5a00; }
+@property --tone { syntax: "<color>"; inherits: true; initial-value: #5a6684; }
+
 :root {
   --paper: #ffffff;
   --surface: #f5f7fc;
@@ -26,7 +31,8 @@
   --accent-ink: var(--gold-ink);
   --shadow: rgba(11, 18, 32, 0.2);
   --off: rgba(11, 18, 32, 0.28);
-  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);       /* ease-out fuerte: entradas y respuestas */
+  --ease-move: cubic-bezier(0.32, 0.72, 0, 1);  /* movimiento en pantalla (indicador del selector) */
   color-scheme: light;
 }
 /* Modo oscuro: lo elige el usuario con el botón de la cabecera (o sigue al sistema la primera vez) */
@@ -63,7 +69,7 @@ body {
     radial-gradient(120% 60% at 10% -10%, color-mix(in srgb, var(--accent) 17%, transparent), transparent 70%),
     radial-gradient(90% 50% at 100% 85%, rgba(61, 139, 255, 0.09), transparent 70%);
   background-attachment: fixed;
-  transition: background-image 0.45s var(--ease);
+  transition: --accent 0.5s var(--ease), --accent-ink 0.5s var(--ease);
   overscroll-behavior-y: none;
   -webkit-user-select: none;
   user-select: none;
@@ -118,7 +124,6 @@ button:disabled { cursor: default; }
 .date-center {
   position: relative; flex: 1; min-height: 48px; border-radius: 16px; overflow: hidden;
   display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--accent-ink);
-  transition: color 0.45s var(--ease);
 }
 .date-text { display: flex; flex-direction: column; line-height: 1.2; }
 .date-label { font-size: 12px; font-weight: 700; color: var(--accent-ink); }
@@ -137,8 +142,9 @@ button:disabled { cursor: default; }
 .tile {
   text-align: left; display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 22px; min-width: 0;
   background: var(--surface); border: 1px solid var(--line);
-  transition: background 0.3s var(--ease), border-color 0.3s var(--ease);
+  transition: background 0.3s var(--ease), border-color 0.3s var(--ease), transform 0.16s var(--ease);
 }
+.tile:active { transform: scale(0.97); }
 .tile[aria-selected="true"][data-cur="USD"] { background: rgba(255, 185, 46, 0.14); border-color: var(--gold); box-shadow: inset 0 0 0 0.5px var(--gold); }
 .tile[aria-selected="true"][data-cur="EUR"] { background: rgba(61, 139, 255, 0.14); border-color: var(--blue); box-shadow: inset 0 0 0 0.5px var(--blue); }
 .tile-top { display: flex; align-items: center; gap: 6px; }
@@ -216,6 +222,7 @@ button:disabled { cursor: default; }
 /* Cambio frente a la publicación anterior */
 .change {
   --tone: var(--muted);
+  transition: --tone 0.35s var(--ease);
   padding: 12px 16px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line);
 }
 .change[data-tone="up"] { --tone: var(--red-ink); }
@@ -231,9 +238,15 @@ button:disabled { cursor: default; }
 }
 
 /* Selector de modo */
-.modes { display: flex; padding: 4px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); }
-.mode-btn { flex: 1; min-height: 44px; border-radius: 12px; font-size: 14px; font-weight: 700; color: var(--muted); }
-.mode-btn[aria-selected="true"] { background: var(--paper); color: var(--accent-ink); }
+.modes { position: relative; display: flex; padding: 4px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); }
+.modes::before { /* indicador: se desliza entre las dos opciones */
+  content: ""; position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); border-radius: 12px;
+  background: var(--paper); box-shadow: 0 1px 6px -2px var(--shadow);
+  transition: transform 0.3s var(--ease-move);
+}
+.modes[data-mode="calc"]::before { transform: translateX(100%); }
+.mode-btn { position: relative; flex: 1; min-height: 44px; border-radius: 12px; font-size: 14px; font-weight: 700; color: var(--muted); transition: color 0.25s var(--ease); }
+.mode-btn[aria-selected="true"] { color: var(--accent-ink); }
 
 /* Modo calculadora */
 .pad { display: flex; flex-direction: column; gap: 10px; }
@@ -276,6 +289,22 @@ button:disabled { cursor: default; }
 }
 .install-close { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); }
 .share-icon { display: inline-block; vertical-align: -3px; margin: 0 1px; color: var(--blue-ink); }
+
+/* ---------- Movimiento ---------- */
+/* Cambio de texto (fecha, tasas, resultado): entra con un leve desplazamiento; en la fecha, hacia el lado de donde viene */
+.tick { animation: tick 0.26s var(--ease) both; }
+@keyframes tick { from { opacity: 0; transform: translate(var(--dx, 0px), 7px); } }
+
+/* Cambio de modo: el panel nuevo aparece subiendo suavemente y las teclas en cascada corta */
+.enter { animation: panel 0.28s var(--ease) both; }
+@keyframes panel { from { opacity: 0; transform: translateY(10px) scale(0.985); } }
+.enter .key { animation: panel 0.26s var(--ease) both; animation-delay: calc(var(--i, 0) * 9ms); }
+
+/* Primera carga: las secciones entran en escalera */
+.app.boot > * { animation: panel 0.55s var(--ease) both; animation-delay: calc(var(--i, 0) * 45ms); }
+
+/* Cambio de tema: fundido suave de toda la pantalla (View Transitions) */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.35s; animation-timing-function: var(--ease); }
 
 [hidden] { display: none !important; }
 
