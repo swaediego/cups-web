@@ -79,9 +79,10 @@
         <span class="badge" id="badge" hidden></span>
       </button>
     </div>
-    <button class="link-btn" id="goToday" type="button" hidden>Volver a la tasa de hoy</button>
+    <button class="link-btn" id="goToday" type="button" aria-label="Volver a la tasa de hoy" hidden>↩ Hoy</button>
   </section>
 
+  <div class="page-clip" id="pageClip"><div class="page" id="page">
   <section class="tiles" role="tablist" aria-label="Moneda">
     <button class="tile" role="tab" data-cur="USD" aria-selected="true" type="button">
       <span class="tile-top"><span class="coin coin-usd">$</span><span class="tile-name">Dólar</span></span>
@@ -110,6 +111,7 @@
       <span class="change-pct" id="changePct"></span>
     </div>
   </section>
+  </div></div>
 
   <div class="modes" role="group" aria-label="Modo">
     <button class="mode-btn" data-mode="convert" aria-selected="true" type="button">Convertir</button>

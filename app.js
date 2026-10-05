@@ -275,7 +275,7 @@
       setText($("rate" + c), r ? money.format(r.value) : "—");
       setText($("date" + c), !r ? "sin datos" : c === "USDT" && r.date === todayISO() ? "en vivo" : shortDate(r.date));
     }
-    document.querySelectorAll(".tile").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.cur === cur)));
+    $("page").querySelectorAll(".tile").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.cur === cur)));
     $("tileUSDT").hidden = !usdtAvailable();
 
     renderChange(cur);
@@ -350,9 +350,35 @@
   function pin(d) {
     const cur = selectedDate(), target = d || currentDate();
     state.dir = cur && target && target !== cur ? (target < cur ? -1 : 1) : 0;
+    const dir = state.dir, old = dir && !reduceMotion.matches ? snapshotPage() : null;
     state.pinned = d === currentDate() ? null : d;
     recalc();
     render();
+    if (old) turnPage(old, dir);
+  }
+
+  // Pasar la hoja: se copia la página actual (con los datos viejos) antes de actualizar; la nueva entra deslizando
+  // desde un lado y la copia sale por el otro. Dura 0,44 s con la misma curva que el resto de movimientos.
+  const PAGE_EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
+  function snapshotPage() {
+    const old = $("page").cloneNode(true);
+    old.removeAttribute("id");
+    old.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+    old.classList.add("page-old");
+    old.setAttribute("aria-hidden", "true");
+    old.inert = true;
+    return old;
+  }
+  function turnPage(old, dir) {
+    $("pageClip").appendChild(old);
+    $("page").animate(
+      [{ transform: `translateX(${dir * 100}%)`, opacity: 0 }, { opacity: 1, offset: 0.6 }, { transform: "none", opacity: 1 }],
+      { duration: 440, easing: PAGE_EASE }
+    );
+    old.animate(
+      [{ transform: "none", opacity: 1 }, { opacity: 0, offset: 0.7 }, { transform: `translateX(${-dir * 100}%)`, opacity: 0 }],
+      { duration: 440, easing: PAGE_EASE }
+    ).onfinish = () => old.remove();
   }
   el.prev.addEventListener("click", () => pin(prevDate()));
   el.next.addEventListener("click", () => pin(nextDate()));
