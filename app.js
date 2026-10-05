@@ -10,6 +10,7 @@
   const LIVE_URL = "https://ve.dolarapi.com/v1/dolares";
   const STORE = "cups.history.v1";
   const STORE_LIVE = "cups.usdtlive.v1";
+  const STORE_SYNC = "cups.lastsync.v1";
 
   const $ = (id) => document.getElementById(id);
   const el = {
@@ -150,6 +151,9 @@
   }
 
   /* ---------- Datos ---------- */
+  let lastSync = 0; // momento de la última descarga exitosa
+  try { lastSync = Number(localStorage.getItem(STORE_SYNC)) || 0; } catch (_) {}
+
   async function getJSON(url) {
     const res = await fetch(url, { cache: "no-cache" });
     if (!res.ok) throw new Error("HTTP " + res.status);
@@ -169,11 +173,11 @@
     return o ? [todayISO(), Number(o.promedio)] : null;
   }
 
-  async function refresh() {
+  // silent: actualización automática, sin indicador de carga ni mensaje de error
+  async function refresh(silent = false) {
     if (state.loading) return;
     state.loading = true;
-    state.error = null;
-    render();
+    if (!silent) { state.error = null; render(); }
     const keys = Object.keys(CUR);
     const [fetched, live] = await Promise.all([
       Promise.all(keys.map((c) => fetchRates(c).catch(() => null))),
@@ -181,7 +185,7 @@
     ]);
     const got = Object.fromEntries(keys.map((c, i) => [c, fetched[i]]));
     if (!got.USD && !got.EUR) {
-      state.error = dates().length ? "Sin conexión, usando las tasas guardadas" : "Sin conexión y sin tasas guardadas";
+      if (!silent) state.error = dates().length ? "Sin conexión, usando las tasas guardadas" : "Sin conexión y sin tasas guardadas";
     } else {
       state.history = Object.fromEntries(keys.map((c) => [c, got[c] || state.history[c]]));
       try { localStorage.setItem(STORE, JSON.stringify(state.history)); } catch (_) {}
@@ -315,40 +319,71 @@
     const d = dates();
     pin([...d].reverse().find((x) => x <= day) || d[0]);
   });
-  el.refresh.addEventListener("click", refresh);
+  el.refresh.addEventListener("click", () => refresh());
 
   /* ---------- Modo calculadora ---------- */
   const OPS = "+−×÷";
   const isOp = (ch) => OPS.includes(ch);
   const lastNumber = () => (state.expr.match(/[\d,]*$/) || [""])[0];
 
-  // Evalúa con + − × ÷ (con precedencia). Ignora un operador final.
+  // Evalúa con + − × ÷, paréntesis y % (con precedencia). Ignora operadores finales y cierra los paréntesis que falten.
+  // "%" divide entre 100; tras + o − (ej. 200+10%) es ese porcentaje del valor de la izquierda.
   function evalExpr(src) {
-    let s = src;
-    while (s && isOp(s[s.length - 1])) s = s.slice(0, -1);
+    let s = src.replace(/[+−×÷(]+$/, "");
     if (!s) return null;
-    const nums = [], ops = [];
-    let i = 0;
-    while (i < s.length) {
-      const neg = s[i] === "−";
-      if (neg) i++;
+    s += ")".repeat(Math.max(0, (s.match(/\(/g) || []).length - (s.match(/\)/g) || []).length));
+    let i = 0, pct = false; // pct: el último término fue un número o grupo seguido de %
+    const number = () => {
       const st = i;
       while (i < s.length && (/\d/.test(s[i]) || s[i] === ",")) i++;
       const n = parseFloat(s.slice(st, i).replace(",", "."));
-      if (!Number.isFinite(n)) return null;
-      nums.push(neg ? -n : n);
-      if (i < s.length) ops.push(s[i++]);
-    }
-    for (let k = 0; k < ops.length;) {
-      if (ops[k] === "×" || ops[k] === "÷") {
-        nums[k] = ops[k] === "×" ? nums[k] * nums[k + 1] : nums[k] / nums[k + 1];
-        nums.splice(k + 1, 1);
-        ops.splice(k, 1);
-      } else k++;
-    }
-    let acc = nums[0];
-    ops.forEach((op, j) => { acc = op === "+" ? acc + nums[j + 1] : acc - nums[j + 1]; });
-    return Number.isFinite(acc) ? acc : null;
+      return Number.isFinite(n) ? n : null;
+    };
+    const factor = () => {
+      if (s[i] === "−") { i++; const v = factor(); return v === null ? null : -v; }
+      let v;
+      if (s[i] === "(") {
+        i++;
+        v = expr();
+        if (v === null || s[i] !== ")") return null;
+        i++;
+      } else {
+        v = number();
+        if (v === null) return null;
+      }
+      pct = false;
+      while (s[i] === "%") { i++; v /= 100; pct = true; }
+      return v;
+    };
+    const term = () => {
+      let v = factor();
+      if (v === null) return null;
+      let single = pct;
+      while (i < s.length && "×÷(".includes(s[i])) {
+        const op = s[i] === "(" ? "×" : s[i++];
+        const r = factor();
+        if (r === null) return null;
+        v = op === "×" ? v * r : v / r;
+        single = false;
+      }
+      pct = single;
+      return v;
+    };
+    const expr = () => {
+      let acc = term();
+      if (acc === null) return null;
+      while (i < s.length && "+−".includes(s[i])) {
+        const op = s[i++];
+        const r = term();
+        if (r === null) return null;
+        const d = pct ? acc * r : r;
+        acc = op === "+" ? acc + d : acc - d;
+      }
+      pct = false;
+      return acc;
+    };
+    const v = expr();
+    return v !== null && i === s.length && Number.isFinite(v) ? v : null;
   }
 
   function press(k) {
@@ -365,20 +400,31 @@
       if (!st.expr) { if (k === "−") st.expr = k; }
       else {
         st.justEvaluated = false;
-        const last = st.expr[st.expr.length - 1];
-        st.expr = isOp(last) ? (st.expr.length === 1 ? st.expr : st.expr.slice(0, -1) + k) : st.expr + k;
+        const last = st.expr[st.expr.length - 1], before = st.expr[st.expr.length - 2];
+        if (last === "(") { if (k === "−") st.expr += k; }
+        else if (isOp(last)) { if (st.expr.length > 1 && before !== "(") st.expr = st.expr.slice(0, -1) + k; }
+        else st.expr += k;
       }
+    } else if (k === "(") {
+      if (st.justEvaluated) { st.expr = ""; st.justEvaluated = false; }
+      if (st.expr.length >= 40) return;
+      st.expr += st.expr && /[\d,)%]$/.test(st.expr) ? "×(" : "(";
+    } else if (k === ")") {
+      const open = (st.expr.match(/\(/g) || []).length - (st.expr.match(/\)/g) || []).length;
+      if (open > 0 && /[\d)%]$/.test(st.expr) && st.expr.length < 40) { st.justEvaluated = false; st.expr += ")"; }
+    } else if (k === "%") {
+      if (/[\d)]$/.test(st.expr) && st.expr.length < 40) { st.justEvaluated = false; st.expr += "%"; }
     } else if (k === ",") {
       if (st.justEvaluated) { st.expr = ""; st.justEvaluated = false; }
       const n = lastNumber();
       if (n.includes(",") || st.expr.length >= 40) return;
-      st.expr += n ? "," : "0,";
+      st.expr += n ? "," : /[)%]$/.test(st.expr) ? "×0," : "0,";
     } else { // dígitos y "00"
       if (st.justEvaluated) { st.expr = ""; st.justEvaluated = false; }
       if (st.expr.length + k.length > 40) return;
       const n = lastNumber();
       if (n === "0" && /^0+$/.test(k)) return;
-      st.expr = n === "0" ? st.expr.slice(0, -1) + (k.replace(/^0+/, "") || "0") : st.expr + k;
+      st.expr = n === "0" ? st.expr.slice(0, -1) + (k.replace(/^0+/, "") || "0") : /[)%]$/.test(st.expr) ? st.expr + "×" + k : st.expr + k;
     }
     renderPad();
   }
@@ -438,7 +484,7 @@
     if (state.mode !== "calc" || e.ctrlKey || e.metaKey || e.altKey) return;
     const map = { "*": "×", "/": "÷", x: "×", "-": "−", ".": ",", Enter: "=", Backspace: "⌫", Escape: "C", Delete: "C" };
     const k = map[e.key] || e.key;
-    if (/^[0-9]$/.test(k) || [",", "+", "−", "×", "÷", "=", "⌫", "C"].includes(k)) { e.preventDefault(); press(k); }
+    if (/^[0-9]$/.test(k) || [",", "+", "−", "×", "÷", "=", "⌫", "C", "(", ")", "%"].includes(k)) { e.preventDefault(); press(k); }
   });
 
   /* ---------- Copiar ---------- */
@@ -524,15 +570,14 @@
   }
   render();
   requestAnimationFrame(() => { animReady = true; });
-  refresh();
-  // Al volver a la app (p. ej. al día siguiente) se vuelven a pedir las tasas
-  let lastFetch = Date.now();
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && Date.now() - lastFetch > 10 * 60 * 1000) {
-      lastFetch = Date.now();
-      refresh();
-    }
-  });
+  // Tasas al día: al abrir o volver al frente, y cada 5 min mientras la app está a la vista.
+  // Si lo guardado tiene más de 10 min se actualiza en silencio (salvo la primera vez, sin datos).
+  function refreshIfStale() {
+    if (Date.now() - lastSync > 10 * 60 * 1000) refresh(dates().length > 0);
+  }
+  refreshIfStale();
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refreshIfStale(); });
+  setInterval(() => { if (document.visibilityState === "visible") refreshIfStale(); }, 5 * 60 * 1000);
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));

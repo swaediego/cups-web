@@ -265,13 +265,14 @@ button:disabled { cursor: default; }
 .converted[data-to="foreign"] { color: var(--accent-ink); }
 .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .key {
-  height: 64px; border-radius: 999px; background: var(--surface); font-size: 26px; font-weight: 500;
+  height: 52px; border-radius: 999px; background: var(--surface); font-size: 26px; font-weight: 500;
   font-variant-numeric: tabular-nums; transition: transform 0.12s var(--ease), opacity 0.12s;
 }
 .key:active { transform: scale(0.95); opacity: 0.85; }
 .key-c { background: color-mix(in srgb, var(--accent) 28%, transparent); color: var(--accent-ink); font-size: 20px; }
 .key-op { background: rgba(61, 139, 255, 0.12); color: var(--accent-ink); font-weight: 700; }
 .key-back { background: var(--line); }
+.key-zero { grid-column: span 2; }
 .key-eq { background: var(--accent-ink); color: var(--paper); font-weight: 700; }
 
 .status { margin: 0; font-size: 13px; font-weight: 500; color: var(--warn); }
