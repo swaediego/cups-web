@@ -65,11 +65,6 @@ body {
   font-family: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
   color: var(--ink);
   background: var(--paper);
-  background-image:
-    radial-gradient(120% 60% at 10% -10%, color-mix(in srgb, var(--accent) 17%, transparent), transparent 70%),
-    radial-gradient(90% 50% at 100% 85%, rgba(61, 139, 255, 0.09), transparent 70%);
-  background-attachment: fixed;
-  transition: --accent 0.5s var(--ease), --accent-ink 0.5s var(--ease);
   overscroll-behavior-y: none;
   -webkit-user-select: none;
   user-select: none;
@@ -79,6 +74,14 @@ input, .amount { -webkit-user-select: text; user-select: text; -webkit-touch-cal
 
 /* Se adapta a cualquier pantalla: la interfaz se diseña para 360 x 760 y app.js calcula --ui (0.62 a 1)
    según el alto y el ancho reales; zoom escala tamaños y letras por igual. */
+/* Fondo: una capa fija propia (en vez de background-attachment: fixed, que repinta todo al desplazar);
+   el color de acento se funde con una transición de opacidad, que corre en la GPU */
+body::before, body::after {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+}
+body::before { background: radial-gradient(90% 50% at 100% 85%, rgba(61, 139, 255, 0.09), transparent 70%); }
+body::after { background: radial-gradient(120% 60% at 10% -10%, color-mix(in srgb, var(--accent) 17%, transparent), transparent 70%); }
+
 .app {
   zoom: var(--ui, 1);
   max-width: 520px;
@@ -164,7 +167,7 @@ button:disabled { cursor: default; }
 }
 
 /* Tarjetas de tasa */
-.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tiles { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
 .tile {
   text-align: left; display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 22px; min-width: 0;
   background: var(--surface); border: 1px solid var(--line);
@@ -325,7 +328,6 @@ button:disabled { cursor: default; }
 /* Cambio de modo: el panel nuevo aparece subiendo suavemente y las teclas en cascada corta */
 .enter { animation: panel 0.28s var(--ease) both; }
 @keyframes panel { from { opacity: 0; transform: translateY(10px) scale(0.985); } }
-.enter .key { animation: panel 0.26s var(--ease) both; animation-delay: calc(var(--i, 0) * 9ms); }
 
 /* Primera carga: las secciones entran en escalera */
 .app.boot > * { animation: panel 0.55s var(--ease) both; animation-delay: calc(var(--i, 0) * 45ms); }
@@ -355,7 +357,7 @@ button:disabled { cursor: default; }
 
 body[data-mode="calc"] .app { height: calc(100vh / var(--ui, 1)); height: calc(100dvh / var(--ui, 1)); min-height: 760px; }
 body[data-mode="calc"] .install { display: none; }
-body[data-mode="calc"] .tiles { grid-template-columns: repeat(3, 46px); justify-content: center; gap: 14px; }
+body[data-mode="calc"] .tiles { grid-auto-columns: 46px; justify-content: center; gap: 14px; }
 body[data-mode="calc"] .tile {
   padding: 0; gap: 0; border-radius: 50%; min-height: 46px; max-height: 46px; align-items: center; justify-content: center;
 }

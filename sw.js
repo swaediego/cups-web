@@ -1,6 +1,6 @@
 // Service worker: deja la app disponible sin conexión. Las tasas no se cachean aquí
 // (la app las guarda en localStorage), solo el "cascarón" de la interfaz.
-const CACHE = "cups-shell-v3";
+const CACHE = "cups-shell-v4";
 const SHELL = [
   "./",
   "index.html",

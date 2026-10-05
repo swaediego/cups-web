@@ -63,7 +63,20 @@
     node.textContent = text;
     if (!animReady || reduceMotion.matches) return;
     node.style.setProperty("--dx", dx + "px");
-    replay(node, "tick");
+    queueTick(node);
+  }
+  // Las animaciones de texto se reinician todas juntas: un solo recálculo de diseño por fotograma
+  // (forzarlo en cada texto, como hacía replay(), encadenaba decenas de recálculos por render)
+  const tickQueue = new Set();
+  function queueTick(node) {
+    if (!tickQueue.size) requestAnimationFrame(() => {
+      const nodes = [...tickQueue];
+      tickQueue.clear();
+      nodes.forEach((n) => n.classList.remove("tick"));
+      void document.body.offsetWidth;
+      nodes.forEach((n) => n.classList.add("tick"));
+    });
+    tickQueue.add(node);
   }
 
   /* ---------- Tema (claro / oscuro) ---------- */
@@ -177,6 +190,9 @@
     }
   }
 
+  // El USDT solo existe para la tasa vigente de hoy (no en fechas anteriores ni futuras)
+  const usdtAvailable = () => !state.pinned;
+
   /* ---------- Datos ---------- */
   let lastSync = 0; // momento de la última descarga exitosa
   try { lastSync = Number(localStorage.getItem(STORE_SYNC)) || 0; } catch (_) {}
@@ -228,6 +244,7 @@
 
   /* ---------- Render ---------- */
   function render() {
+    if (state.currency === "USDT" && !usdtAvailable()) { state.currency = "USD"; state.lastEdited = "bs"; recalc(); }
     const cur = state.currency;
     document.body.dataset.cur = cur;
     const sel = selectedDate(), current = currentDate();
@@ -259,6 +276,7 @@
       setText($("date" + c), !r ? "sin datos" : c === "USDT" && r.date === todayISO() ? "en vivo" : shortDate(r.date));
     }
     document.querySelectorAll(".tile").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.cur === cur)));
+    $("tileUSDT").hidden = !usdtAvailable();
 
     renderChange(cur);
 
