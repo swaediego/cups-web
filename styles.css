@@ -298,7 +298,7 @@ button:disabled { cursor: default; }
 .key-c { background: color-mix(in srgb, var(--accent) 28%, transparent); color: var(--accent-ink); font-size: 20px; }
 .key-op { background: rgba(61, 139, 255, 0.12); color: var(--accent-ink); font-weight: 700; }
 .key-back { background: var(--line); }
-.key-zero { grid-column: span 2; }
+.key-zero { grid-column: span 3; }
 .key-eq { background: var(--accent-ink); color: var(--paper); font-weight: 700; }
 
 .status { margin: 0; font-size: 13px; font-weight: 500; color: var(--warn); }
