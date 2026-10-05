@@ -326,7 +326,17 @@ button:disabled { cursor: default; }
 @keyframes tick { from { opacity: 0; transform: translate(var(--dx, 0px), 7px); } }
 
 /* Cambio de modo: el panel nuevo aparece subiendo suavemente y las teclas en cascada corta */
-.enter { animation: panel 0.28s var(--ease) both; }
+/* Igual que en la APK: el panel nuevo sube desde abajo mientras aparece, y el encabezado y cada fila del
+   teclado suben en cascada (56 px, 0,38 s, 45 ms entre filas). --r = fila del teclado (app.js). */
+.enter { animation: rise 0.44s var(--ease) both, fade 0.3s var(--ease) 0.06s both; --rise: 10%; }
+.pad.enter { --rise: 20%; }
+.enter .pad-head, .enter .expr, .enter .converted, .enter .key {
+  animation: row 0.38s var(--ease) both; animation-delay: calc(0.07s + var(--r, 0) * 45ms);
+}
+.enter .pad-head, .enter .expr, .enter .converted { animation-delay: 0.07s; }
+@keyframes rise { from { transform: translateY(var(--rise)); } }
+@keyframes fade { from { opacity: 0; } }
+@keyframes row { from { opacity: 0; transform: translateY(56px); } }
 @keyframes panel { from { opacity: 0; transform: translateY(10px) scale(0.985); } }
 
 /* Primera carga: las secciones entran en escalera */
@@ -338,20 +348,20 @@ button:disabled { cursor: default; }
 /* ---------- Calculadora: todo cabe en una pantalla fija, sin deslizar ----------
    Las tarjetas de moneda se encogen a burbujas con el símbolo, la variación se pliega
    y el teclado reparte el alto que queda (entre 34 y 72 px por tecla). */
-.tiles { transition: gap 0.3s var(--ease-move), grid-template-columns 0.32s var(--ease-move); }
+.tiles { transition: gap 0.38s var(--ease-move), grid-template-columns 0.32s var(--ease-move); }
 .tile {
   overflow: hidden; max-height: 112px;
   transition: background 0.3s var(--ease), border-color 0.3s var(--ease), transform 0.16s var(--ease),
-    padding 0.3s var(--ease-move), gap 0.3s var(--ease-move), border-radius 0.3s var(--ease-move),
-    min-height 0.3s var(--ease-move), max-height 0.3s var(--ease-move);
+    padding 0.38s var(--ease-move), gap 0.38s var(--ease-move), border-radius 0.38s var(--ease-move),
+    min-height 0.38s var(--ease-move), max-height 0.38s var(--ease-move);
 }
-.tile-top .coin { transition: width 0.3s var(--ease-move), height 0.3s var(--ease-move), font-size 0.3s var(--ease-move); }
-.tile-name { overflow: hidden; white-space: nowrap; max-width: 90px; transition: max-width 0.3s var(--ease-move), opacity 0.2s; }
-.tile-rate, .tile-date { overflow: hidden; max-height: 30px; transition: max-height 0.3s var(--ease-move), opacity 0.2s; }
+.tile-top .coin { transition: width 0.38s var(--ease-move), height 0.38s var(--ease-move), font-size 0.38s var(--ease-move); }
+.tile-name { overflow: hidden; white-space: nowrap; max-width: 90px; transition: max-width 0.38s var(--ease-move), opacity 0.2s; }
+.tile-rate, .tile-date { overflow: hidden; max-height: 30px; transition: max-height 0.38s var(--ease-move), opacity 0.2s; }
 .change {
   max-height: 120px; overflow: hidden;
-  transition: --tone 0.35s var(--ease), max-height 0.3s var(--ease-move), opacity 0.2s, margin 0.3s var(--ease-move),
-    padding 0.3s var(--ease-move), border-width 0.3s;
+  transition: --tone 0.35s var(--ease), max-height 0.38s var(--ease-move), opacity 0.26s var(--ease) 0.08s, margin 0.38s var(--ease-move),
+    padding 0.38s var(--ease-move), border-width 0.3s;
 }
 .pad { transition: none; }
 

@@ -609,7 +609,7 @@
   /* ---------- Arranque ---------- */
   const appEl = document.querySelector(".app");
   [...appEl.children].forEach((c, i) => c.style.setProperty("--i", i));
-  el.keys.querySelectorAll(".key").forEach((k, i) => k.style.setProperty("--i", i));
+  el.keys.querySelectorAll(".key").forEach((k, i) => k.style.setProperty("--r", Math.floor(i / 4))); // fila del teclado
   if (!reduceMotion.matches) {
     appEl.classList.add("boot");
     setTimeout(() => appEl.classList.remove("boot"), 1100); // luego no se repite al mostrar/ocultar secciones
