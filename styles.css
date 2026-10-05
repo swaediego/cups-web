@@ -178,9 +178,10 @@ button:disabled { cursor: default; }
 @keyframes chip-in { from { opacity: 0; transform: translateY(8px) scale(0.6); } }
 
 /* Cada fecha es una "página": al cambiar de día la nueva se desliza desde un lado y la anterior sale hacia el otro */
-.page-clip { position: relative; overflow: hidden; padding: 4px; margin: -4px; }
+/* margen de 8 px: la burbuja elegida crece un 6 % y su borde/anillo de foco no deben recortarse */
+.page-clip { position: relative; overflow: hidden; padding: 8px; margin: -8px; }
 .page { display: flex; flex-direction: column; gap: 18px; }
-.page-old { position: absolute; top: 4px; left: 4px; right: 4px; pointer-events: none; }
+.page-old { position: absolute; top: 8px; left: 8px; right: 8px; pointer-events: none; }
 
 /* Tarjetas de tasa */
 .tiles { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
