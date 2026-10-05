@@ -77,7 +77,10 @@ body {
 }
 input, .amount { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
 
+/* Se adapta a cualquier pantalla: la interfaz se diseña para 360 x 760 y app.js calcula --ui (0.62 a 1)
+   según el alto y el ancho reales; zoom escala tamaños y letras por igual. */
 .app {
+  zoom: var(--ui, 1);
   max-width: 520px;
   margin: 0 auto;
   padding: calc(env(safe-area-inset-top) + 12px) calc(env(safe-area-inset-right) + 20px)
@@ -332,7 +335,7 @@ button:disabled { cursor: default; }
 
 /* ---------- Calculadora: todo cabe en una pantalla fija, sin deslizar ----------
    Las tarjetas de moneda se encogen a burbujas con el símbolo, la variación se pliega
-   y el teclado reparte el alto que queda (entre 36 y 62 px por tecla). */
+   y el teclado reparte el alto que queda (entre 34 y 72 px por tecla). */
 .tiles { transition: gap 0.3s var(--ease-move), grid-template-columns 0.32s var(--ease-move); }
 .tile {
   overflow: hidden; max-height: 112px;
@@ -350,7 +353,7 @@ button:disabled { cursor: default; }
 }
 .pad { transition: none; }
 
-body[data-mode="calc"] .app { height: 100vh; height: 100dvh; min-height: 720px; }
+body[data-mode="calc"] .app { height: calc(100vh / var(--ui, 1)); height: calc(100dvh / var(--ui, 1)); min-height: 760px; }
 body[data-mode="calc"] .install { display: none; }
 body[data-mode="calc"] .tiles { grid-template-columns: repeat(3, 46px); justify-content: center; gap: 14px; }
 body[data-mode="calc"] .tile {
@@ -368,19 +371,9 @@ body[data-mode="calc"] .change {
 body[data-mode="calc"] .pad { flex: 1 1 0; min-height: 0; }
 body[data-mode="calc"] .expr { margin-top: auto; }
 body[data-mode="calc"] .keys {
-  height: calc(6 * 62px + 5 * 8px); min-height: calc(6 * 36px + 5 * 8px); flex: 0 1 auto; grid-template-rows: repeat(6, minmax(0, 1fr));
+  flex: 1 1 0; min-height: calc(6 * 34px + 5 * 8px); max-height: calc(6 * 72px + 5 * 8px); grid-template-rows: repeat(6, minmax(0, 1fr));
 }
 body[data-mode="calc"] .key { height: auto; min-height: 0; }
-/* Pantallas bajas: se aprietan los espacios para que siga cabiendo */
-@media (max-height: 780px) {
-  body[data-mode="calc"] .app { gap: 12px; min-height: 690px; }
-  body[data-mode="calc"] .change { margin-block: -6px; }
-  body[data-mode="calc"] .expr { font-size: 52px; }
-  body[data-mode="calc"] .expr[data-size="m"] { font-size: 44px; }
-  body[data-mode="calc"] .expr[data-size="s"] { font-size: 36px; }
-  body[data-mode="calc"] .expr[data-size="xs"] { font-size: 28px; }
-  body[data-mode="calc"] .keys { min-height: calc(6 * 34px + 5 * 8px); }
-}
 
 [hidden] { display: none !important; }
 

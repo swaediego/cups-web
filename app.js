@@ -93,6 +93,18 @@
     else applyTheme();
   });
 
+  /* ---------- Ajuste a la pantalla ---------- */
+  // La interfaz se diseña para 360 x 760 y se encoge por igual si la pantalla es más pequeña (no crece en las grandes)
+  const DESIGN_W = 360, DESIGN_H = 760;
+  function fit() {
+    const a = document.activeElement;
+    if (a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA")) return; // teclado abierto: no reescalar
+    const s = Math.max(0.62, Math.min(1, innerWidth / DESIGN_W, innerHeight / DESIGN_H));
+    document.documentElement.style.setProperty("--ui", s.toFixed(3));
+  }
+  fit();
+  window.addEventListener("resize", fit);
+
   /* ---------- Información de la app ---------- */
   const infoBtn = $("info"), infoCard = $("infoCard"), infoScrim = $("infoScrim");
   $("infoVersion").textContent = "Versión " + APP_VERSION;
