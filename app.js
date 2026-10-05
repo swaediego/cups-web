@@ -8,7 +8,7 @@
     USDT: { label: "USDT", symbol: "₮", url: "https://ve.dolarapi.com/v1/historicos/dolares/paralelo", official: false },
   };
   const LIVE_URL = "https://ve.dolarapi.com/v1/dolares";
-  const APP_VERSION = "1.3"; // misma versión que la APK; súbela cuando cambie
+  const APP_VERSION = "1.4"; // misma versión que la APK; súbela cuando cambie
   const STORE = "cups.history.v1";
   const STORE_LIVE = "cups.usdtlive.v1";
   const STORE_SYNC = "cups.lastsync.v1";
