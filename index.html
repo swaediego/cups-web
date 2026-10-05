@@ -113,6 +113,25 @@
   </section>
   </div></div>
 
+  <!-- Calculadora: las monedas ocupan el lugar de las tarjetas. Bs o ⇄ invierten; la moneda extranjera abre la lista -->
+  <section class="cstrip" id="cstrip" aria-label="Monedas de la calculadora" data-dir="in" hidden>
+    <div class="cpair" id="cpair">
+      <button class="cbub c-bs" id="cBs" type="button" data-cur="BS" aria-label="Bolívares. Toca para invertir la conversión">
+        <span class="coin coin-bs">Bs</span>
+      </button>
+      <button class="cswap" id="cSwap" type="button" aria-label="Invertir conversión">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5h15M15.5 5l3.5 3.5-3.5 3.5M20 15.5H5M8.5 12 5 15.5 8.5 19"/></svg>
+      </button>
+      <div class="cfor-wrap" id="cForWrap">
+        <button class="cbub c-for" id="cFor" type="button" data-cur="USD" aria-haspopup="menu" aria-expanded="false" aria-label="Moneda: Dólar. Toca para elegir">
+          <span class="coin coin-usd" id="cForCoin">$</span>
+          <span class="cchev" aria-hidden="true"><svg viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 3.2 5 6.8l3.5-3.6"/></svg></span>
+        </button>
+        <div class="cmenu" id="cMenu" role="menu" aria-label="Elegir moneda" hidden></div>
+      </div>
+    </div>
+  </section>
+
   <div class="modes" role="group" aria-label="Modo">
     <button class="mode-btn" data-mode="convert" aria-selected="true" type="button">Convertir</button>
     <button class="mode-btn" data-mode="calc" aria-selected="false" type="button">Calculadora</button>
@@ -147,15 +166,15 @@
   </section>
 
   <section class="pad" id="pad" aria-label="Calculadora" hidden>
-    <div class="pad-head">
-      <span class="dir" id="dir">Bs → $</span>
-      <span class="pad-rate" id="padRate"></span>
+    <!-- Indicador de página: dice que hay otra página al lado; el primer punto vuelve a Convertir -->
+    <div class="dots">
+      <button class="dot-slot" id="dotBack" type="button" aria-label="Volver a Convertir"><i class="dot"></i></button>
+      <span class="dot-slot" aria-hidden="true"><i class="dot dot-on"></i></span>
     </div>
     <div class="expr" id="expr" data-size="l">0</div>
     <div class="converted" id="converted" aria-live="polite">$ 0,00</div>
     <div class="keys" id="keys">
       <button class="key key-c" data-k="C" type="button" aria-label="Borrar todo">AC</button>
-      <button class="key key-op" data-k="⇄" type="button" aria-label="Invertir conversión">⇄</button>
       <button class="key key-back" data-k="⌫" type="button" aria-label="Borrar un dígito, mantener para borrar todo">⌫</button>
       <button class="key key-op" data-k="÷" type="button" aria-label="Dividir">÷</button>
       <button class="key key-op" data-k="(" type="button" aria-label="Abrir paréntesis">(</button>
@@ -196,6 +215,7 @@
 </div>
 <div class="scrim" id="infoScrim"></div>
 
+<script src="vendor/motion.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

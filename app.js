@@ -14,6 +14,7 @@
   const STORE_SYNC = "cups.lastsync.v1";
 
   const $ = (id) => document.getElementById(id);
+  const appEl = document.querySelector(".app");
   const el = {
     refresh: $("refresh"), prev: $("prev"), next: $("next"), badge: $("badge"), goToday: $("goToday"),
     dateLabel: $("dateLabel"), dateValue: $("dateValue"), datePick: $("datePick"),
@@ -22,7 +23,8 @@
     ratePill: $("ratePill"), status: $("status"), clearConv: $("clearConv"),
     modeBtns: document.querySelectorAll(".mode-btn"), conv: $("conv"), pad: $("pad"),
     change: $("change"), changeTop: $("changeTop"), changeMain: $("changeMain"), changePct: $("changePct"), changeEmpty: $("changeEmpty"), changeBody: $("changeBody"),
-    dir: $("dir"), padRate: $("padRate"), expr: $("expr"), converted: $("converted"), keys: $("keys"), modes: document.querySelector(".modes"),
+    expr: $("expr"), cstrip: $("cstrip"), cBs: $("cBs"), cSwap: $("cSwap"), cFor: $("cFor"), cForCoin: $("cForCoin"),
+    cForWrap: $("cForWrap"), cMenu: $("cMenu"), converted: $("converted"), keys: $("keys"), modes: document.querySelector(".modes"),
   };
 
   const ICON_COPY = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8.5" y="8.5" width="12" height="12" rx="3.2"/><path d="M15.5 4.5h-7a4 4 0 0 0-4 4v7"/></svg>';
@@ -350,7 +352,7 @@
   function pin(d) {
     const cur = selectedDate(), target = d || currentDate();
     state.dir = cur && target && target !== cur ? (target < cur ? -1 : 1) : 0;
-    const dir = state.dir, old = dir && !reduceMotion.matches ? snapshotPage() : null;
+    const dir = state.dir, old = dir && state.mode === "convert" && !reduceMotion.matches ? snapshotPage() : null;
     state.pinned = d === currentDate() ? null : d;
     recalc();
     render();
@@ -502,12 +504,10 @@
 
   function renderPad() {
     const cur = state.currency, r = rateFor(cur), inBs = state.calcInBs;
-    const fromSym = inBs ? "Bs" : CUR[cur].symbol, toSym = inBs ? CUR[cur].symbol : "Bs";
+    const toSym = inBs ? CUR[cur].symbol : "Bs";
     const shown = state.expr || "0";
     el.expr.textContent = shown;
     el.expr.dataset.size = shown.length > 20 ? "xs" : shown.length > 13 ? "s" : shown.length > 8 ? "m" : "l";
-    el.dir.textContent = `${fromSym} → ${toSym}`;
-    el.padRate.textContent = r ? `1 ${CUR[cur].symbol} = ${money.format(r.value)}` : "";
     const v = evalExpr(state.expr);
     const conv = v !== null && r ? (inBs ? v / r.value : v * r.value) : 0;
     setText(el.converted, `${toSym} ${money.format(conv)}`);
@@ -518,6 +518,8 @@
     const calc = state.mode === "calc";
     el.conv.hidden = calc;
     el.pad.hidden = !calc;
+    el.cstrip.hidden = !calc;
+    if (calc) renderStrip();
     el.modeBtns.forEach((b) => b.setAttribute("aria-selected", String(b.dataset.mode === state.mode)));
     el.modes.dataset.mode = state.mode;
     document.body.dataset.mode = state.mode;
@@ -525,12 +527,129 @@
     if (calc) renderPad();
   }
 
-  el.modeBtns.forEach((b) => b.addEventListener("click", () => {
-    if (state.mode === b.dataset.mode) return;
-    state.mode = b.dataset.mode;
+  el.modeBtns.forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+
+  /* ---------- Convertir ↔ Calculadora: pasar de página ----------
+     Igual que en la APK: el diseño final aparece de una vez y lo nuevo entra deslizando de lado con un resorte
+     mientras una copia de lo anterior sale por el otro lado. Solo se animan transform y opacity (sin recalcular). */
+  const SPRING = { type: "spring", stiffness: 260, damping: 29, mass: 1 }; // = dampingRatio 0.9 de la APK
+  const anim = (node, kf, opts) => (window.Motion ? window.Motion.animate(node, kf, opts) : null);
+  const headerOf = (m) => (m === "calc" ? el.cstrip : $("pageClip"));
+  const panelOf = (m) => (m === "calc" ? el.pad : el.conv);
+
+  function ghost(node) {
+    const g = node.cloneNode(true);
+    g.removeAttribute("id");
+    g.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+    g.classList.add("slide-ghost");
+    g.setAttribute("aria-hidden", "true");
+    g.inert = true;
+    Object.assign(g.style, { top: node.offsetTop + "px", left: node.offsetLeft + "px", width: node.offsetWidth + "px", height: node.offsetHeight + "px" });
+    return g;
+  }
+
+  function setMode(m, fromHistory = false) {
+    if (state.mode === m) return;
+    // El botón/gesto de atrás del teléfono vuelve de la Calculadora a Convertir
+    if (m === "convert" && !fromHistory && history.state && history.state.calc) { history.back(); return; }
+    if (m === "calc" && !(history.state && history.state.calc)) history.pushState({ calc: 1 }, "");
+    const moving = !reduceMotion.matches && window.Motion;
+    const dir = m === "calc" ? 1 : -1;
+    const ghosts = moving ? [headerOf(state.mode), panelOf(state.mode)].filter((n) => !n.hidden).map(ghost) : [];
+    closeMenu();
+    state.mode = m;
     render();
-    if (!reduceMotion.matches) replay(state.mode === "calc" ? el.pad : el.conv, "enter");
-  }));
+    if (!moving) return;
+    for (const g of ghosts) {
+      appEl.appendChild(g);
+      const a = anim(g, { x: ["0%", `${-dir * 100}%`], opacity: [1, 0] }, { x: SPRING, opacity: { duration: 0.26, ease: "easeOut" } });
+      a.finished.then(() => g.remove(), () => g.remove());
+    }
+    for (const n of [headerOf(m), panelOf(m)]) {
+      anim(n, { x: [`${dir * 100}%`, "0%"], opacity: [0, 1] }, { x: SPRING, opacity: { duration: 0.22, ease: "easeOut" } });
+    }
+    if (m === "convert") anim(el.modes, { opacity: [0, 1] }, { duration: 0.22, delay: 0.06, ease: "easeOut" });
+  }
+  window.addEventListener("popstate", () => { if (state.mode === "calc") setMode("convert", true); });
+  if (history.state && history.state.calc) history.replaceState(null, "");
+  $("dotBack").addEventListener("click", () => setMode("convert"));
+
+  // Deslizar el dedo desde cualquier parte: a la derecha vuelve a Convertir, a la izquierda entra a la Calculadora
+  let swipeX = null, swipeY = 0, swiped = false;
+  appEl.addEventListener("pointerdown", (e) => {
+    swipeX = e.isPrimary && !e.target.closest("input, .cmenu") ? e.clientX : null;
+    swipeY = e.clientY;
+  }, true);
+  appEl.addEventListener("pointercancel", () => { swipeX = null; }, true);
+  appEl.addEventListener("pointerup", (e) => {
+    if (swipeX === null) return;
+    const dx = e.clientX - swipeX, dy = e.clientY - swipeY;
+    swipeX = null;
+    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx > 0 && state.mode === "calc") { swiped = true; setMode("convert"); }
+    else if (dx < 0 && state.mode === "convert") { swiped = true; setMode("calc"); }
+  }, true);
+  // Un deslizamiento no cuenta como toque en la tecla o tarjeta donde empezó
+  appEl.addEventListener("click", (e) => { if (swiped) { swiped = false; e.stopPropagation(); e.preventDefault(); } }, true);
+
+  /* ---------- Franja de monedas de la calculadora ---------- */
+  function renderStrip() {
+    const cur = state.currency;
+    el.cstrip.dataset.dir = state.calcInBs ? "in" : "out";
+    el.cFor.dataset.cur = cur;
+    el.cForCoin.textContent = CUR[cur].symbol;
+    el.cForCoin.className = "coin coin-" + cur.toLowerCase();
+    el.cFor.setAttribute("aria-label", `Moneda: ${CUR[cur].label}. Toca para elegir`);
+  }
+
+  // Invertir: los dos círculos cambian de lado deslizándose (FLIP) y la flecha da media vuelta
+  function swapSides() {
+    const moving = !reduceMotion.matches && window.Motion;
+    const nodes = [el.cBs, el.cForWrap];
+    const before = moving ? nodes.map((n) => n.getBoundingClientRect().left) : [];
+    closeMenu();
+    state.calcInBs = !state.calcInBs;
+    renderStrip();
+    renderPad();
+    if (!moving) return;
+    const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--ui")) || 1;
+    nodes.forEach((n, i) => anim(n, { x: [(before[i] - n.getBoundingClientRect().left) / z, 0] }, SPRING));
+  }
+  el.cBs.addEventListener("click", swapSides);
+  el.cSwap.addEventListener("click", swapSides);
+
+  // Lista para elegir la moneda (con la tasa de cada una)
+  function openMenu() {
+    const list = usdtAvailable() ? Object.keys(CUR) : Object.keys(CUR).filter((c) => CUR[c].official);
+    el.cMenu.innerHTML = list.map((c) => {
+      const r = rateFor(c);
+      return `<button class="cmi" role="menuitemradio" type="button" data-cur="${c}" aria-checked="${c === state.currency}">` +
+        `<span class="coin coin-${c.toLowerCase()}">${CUR[c].symbol}</span>` +
+        `<span class="cmi-t"><b>${CUR[c].label}</b><small>${r ? "Bs. " + money.format(r.value) : "sin datos"}</small></span></button>`;
+    }).join("");
+    el.cMenu.hidden = false;
+    el.cFor.setAttribute("aria-expanded", "true");
+    anim(el.cMenu, { opacity: [0, 1], scale: [0.86, 1], y: [-6, 0] }, { scale: SPRING, y: SPRING, opacity: { duration: 0.16 } });
+  }
+  function closeMenu() {
+    if (el.cMenu.hidden) return;
+    el.cFor.setAttribute("aria-expanded", "false");
+    const a = !reduceMotion.matches && anim(el.cMenu, { opacity: 0, scale: 0.94 }, { duration: 0.12, ease: "easeOut" });
+    if (a) a.finished.then(() => { if (el.cFor.getAttribute("aria-expanded") === "false") el.cMenu.hidden = true; });
+    else el.cMenu.hidden = true;
+  }
+  el.cFor.addEventListener("click", () => (el.cMenu.hidden ? openMenu() : closeMenu()));
+  el.cMenu.addEventListener("click", (e) => {
+    const b = e.target.closest(".cmi");
+    if (!b) return;
+    state.currency = b.dataset.cur;
+    state.lastEdited = "bs";
+    recalc();
+    render();
+    closeMenu();
+  });
+  document.addEventListener("pointerdown", (e) => { if (!el.cMenu.hidden && !e.target.closest("#cForWrap")) closeMenu(); }, true);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !el.cMenu.hidden) { e.preventDefault(); closeMenu(); } });
 
   // Mantener pulsado ⌫ = reiniciar todo el monto de golpe
   let holdTimer = null, held = false;
@@ -548,8 +667,7 @@
     if (!b) return;
     if (b.dataset.k === "⌫" && held) { held = false; return; }
     if (navigator.vibrate) navigator.vibrate(8);
-    if (b.dataset.k === "⇄") { state.calcInBs = !state.calcInBs; renderPad(); }
-    else press(b.dataset.k);
+    press(b.dataset.k);
   });
 
   document.addEventListener("keydown", (e) => {
@@ -633,9 +751,7 @@
   window.addEventListener("appinstalled", () => { installBox.hidden = true; });
 
   /* ---------- Arranque ---------- */
-  const appEl = document.querySelector(".app");
   [...appEl.children].forEach((c, i) => c.style.setProperty("--i", i));
-  el.keys.querySelectorAll(".key").forEach((k, i) => k.style.setProperty("--r", Math.floor(i / 4))); // fila del teclado
   if (!reduceMotion.matches) {
     appEl.classList.add("boot");
     setTimeout(() => appEl.classList.remove("boot"), 1100); // luego no se repite al mostrar/ocultar secciones

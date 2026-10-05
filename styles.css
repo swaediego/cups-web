@@ -296,9 +296,11 @@ button:disabled { cursor: default; }
 
 /* Modo calculadora */
 .pad { display: flex; flex-direction: column; gap: 10px; }
-.pad-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px; }
-.dir { padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 16%, transparent); }
-.pad-rate { font-size: 12px; font-weight: 600; color: var(--muted); }
+/* Indicador de página: dos casillas iguales, cada punto centrado en la suya (simétrico respecto al centro) */
+.dots { display: flex; justify-content: center; align-items: center; }
+.dot-slot { width: 26px; height: 24px; display: grid; place-items: center; border-radius: 999px; }
+.dot { display: block; width: 5px; height: 5px; border-radius: 999px; background: color-mix(in srgb, var(--muted) 40%, transparent); }
+.dot-on { width: 16px; background: var(--accent-ink); }
 .expr {
   padding: 12px 4px 0; text-align: right; font-weight: 800; letter-spacing: -1.5px; line-height: 1.15;
   font-variant-numeric: tabular-nums; overflow-wrap: anywhere; word-break: break-all;
@@ -315,7 +317,7 @@ button:disabled { cursor: default; }
   font-variant-numeric: tabular-nums; transition: transform 0.12s var(--ease), opacity 0.12s;
 }
 .key:active { transform: scale(0.95); opacity: 0.85; }
-.key-c { background: color-mix(in srgb, var(--accent) 28%, transparent); color: var(--accent-ink); font-size: 20px; }
+.key-c { grid-column: span 2; background: color-mix(in srgb, var(--accent) 28%, transparent); color: var(--accent-ink); font-size: 20px; }
 .key-op { background: rgba(61, 139, 255, 0.12); color: var(--accent-ink); font-weight: 700; }
 .key-back { background: var(--line); }
 .key-zero { grid-column: span 3; }
@@ -343,17 +345,6 @@ button:disabled { cursor: default; }
 @keyframes tick { from { opacity: 0; transform: translate(var(--dx, 0px), 7px); } }
 
 /* Cambio de modo: el panel nuevo aparece subiendo suavemente y las teclas en cascada corta */
-/* Igual que en la APK: el panel nuevo sube desde abajo mientras aparece, y el encabezado y cada fila del
-   teclado suben en cascada (56 px, 0,38 s, 45 ms entre filas). --r = fila del teclado (app.js). */
-.enter { animation: rise 0.44s var(--ease) both, fade 0.3s var(--ease) 0.06s both; --rise: 10%; }
-.pad.enter { --rise: 20%; }
-.enter .pad-head, .enter .expr, .enter .converted, .enter .key {
-  animation: row 0.38s var(--ease) both; animation-delay: calc(0.07s + var(--r, 0) * 45ms);
-}
-.enter .pad-head, .enter .expr, .enter .converted { animation-delay: 0.07s; }
-@keyframes rise { from { transform: translateY(var(--rise)); } }
-@keyframes fade { from { opacity: 0; } }
-@keyframes row { from { opacity: 0; transform: translateY(56px); } }
 @keyframes panel { from { opacity: 0; transform: translateY(10px) scale(0.985); } }
 
 /* Primera carga: las secciones entran en escalera */
@@ -363,46 +354,61 @@ button:disabled { cursor: default; }
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.35s; animation-timing-function: var(--ease); }
 
 /* ---------- Calculadora: todo cabe en una pantalla fija, sin deslizar ----------
-   Las tarjetas de moneda se encogen a burbujas con el símbolo, la variación se pliega
-   y el teclado reparte el alto que queda (entre 34 y 72 px por tecla). */
-.tiles { transition: gap 0.38s var(--ease-move), grid-template-columns 0.32s var(--ease-move); }
-.tile {
-  overflow: hidden; max-height: 112px;
-  transition: background 0.3s var(--ease), border-color 0.3s var(--ease), transform 0.16s var(--ease),
-    padding 0.38s var(--ease-move), gap 0.38s var(--ease-move), border-radius 0.38s var(--ease-move),
-    min-height 0.38s var(--ease-move), max-height 0.38s var(--ease-move);
-}
-.tile-top .coin { transition: width 0.38s var(--ease-move), height 0.38s var(--ease-move), font-size 0.38s var(--ease-move); }
-.tile-name { overflow: hidden; white-space: nowrap; max-width: 90px; transition: max-width 0.38s var(--ease-move), opacity 0.2s; }
-.tile-rate, .tile-date { overflow: hidden; max-height: 30px; transition: max-height 0.38s var(--ease-move), opacity 0.2s; }
-.change {
-  max-height: 120px; overflow: hidden;
-  transition: --tone 0.35s var(--ease), max-height 0.38s var(--ease-move), opacity 0.26s var(--ease) 0.08s, margin 0.38s var(--ease-move),
-    padding 0.38s var(--ease-move), border-width 0.3s;
-}
-.pad { transition: none; }
-
+   Las tarjetas y la variación dan paso a la franja de monedas (Bs ⇄ $), el selector se oculta (se vuelve
+   deslizando, con atrás o con el punto) y el teclado reparte el alto que queda (entre 34 y 72 px por tecla). */
+.app { position: relative; overflow-x: clip; touch-action: pan-y; }
 body[data-mode="calc"] .app { height: calc(100vh / var(--ui, 1)); height: calc(100dvh / var(--ui, 1)); min-height: 760px; }
-body[data-mode="calc"] .install { display: none; }
-body[data-mode="calc"] .tiles { grid-auto-columns: 46px; justify-content: center; gap: 14px; }
-body[data-mode="calc"] .tile {
-  padding: 0; gap: 0; border-radius: 50%; min-height: 46px; max-height: 46px; align-items: center; justify-content: center;
-}
-body[data-mode="calc"] .tile:active { transform: scale(0.92); }
-body[data-mode="calc"] .tile[aria-selected="true"] { transform: scale(1.06); }
-body[data-mode="calc"] .tile-top { justify-content: center; gap: 0; }
-body[data-mode="calc"] .tile-top .coin { width: 26px; height: 26px; font-size: 14px; }
-body[data-mode="calc"] .tile-name { max-width: 0; opacity: 0; }
-body[data-mode="calc"] .tile-rate, body[data-mode="calc"] .tile-date { max-height: 0; min-height: 0; opacity: 0; }
-body[data-mode="calc"] .change {
-  max-height: 0; opacity: 0; margin-block: -9px; padding-block: 0; border-width: 0;
-}
+body[data-mode="calc"] .install,
+body[data-mode="calc"] .page-clip,
+body[data-mode="calc"] .modes { display: none; }
 body[data-mode="calc"] .pad { flex: 1 1 0; min-height: 0; }
 body[data-mode="calc"] .expr { margin-top: auto; }
 body[data-mode="calc"] .keys {
   flex: 1 1 0; min-height: calc(6 * 34px + 5 * 8px); max-height: calc(6 * 72px + 5 * 8px); grid-template-rows: repeat(6, minmax(0, 1fr));
 }
 body[data-mode="calc"] .key { height: auto; min-height: 0; }
+
+/* Franja de monedas: dos círculos con solo el símbolo y la flecha en medio, centrados */
+.cstrip { display: flex; justify-content: center; padding: 4px 0; }
+.cpair { display: flex; align-items: center; gap: 8px; }
+.cbub {
+  --c: var(--gold); position: relative; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--c) 18%, transparent); transition: transform 0.16s var(--ease);
+}
+.cbub:active { transform: scale(0.92); }
+.cbub[data-cur="BS"] { --c: var(--red); }
+.cbub[data-cur="EUR"] { --c: var(--blue); }
+.cbub[data-cur="USDT"] { --c: var(--green); }
+.cbub .coin { width: 30px; height: 30px; font-size: 16px; }
+.cbub .coin-bs { font-size: 12px; }
+.cchev {
+  position: absolute; right: 1px; bottom: 1px; width: 15px; height: 15px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--paper); color: var(--ink);
+}
+.cswap { width: 32px; height: 44px; display: grid; place-items: center; color: var(--muted); }
+.cswap svg { transition: transform 0.36s var(--ease-move); }
+/* Sentido de la conversión: Bs → divisa o divisa → Bs (los círculos cambian de lado y la flecha da media vuelta) */
+.c-bs { order: 1; } .cswap { order: 2; } .cfor-wrap { order: 3; position: relative; }
+.cstrip[data-dir="out"] .c-bs { order: 3; }
+.cstrip[data-dir="out"] .cfor-wrap { order: 1; }
+.cstrip[data-dir="out"] .cswap svg { transform: rotate(180deg); }
+/* Lista de monedas */
+.cmenu {
+  position: absolute; z-index: 31; top: calc(100% + 6px); right: 0; min-width: 190px; padding: 6px;
+  display: flex; flex-direction: column; border-radius: 18px; background: var(--paper);
+  border: 1px solid var(--line); box-shadow: 0 18px 40px -14px var(--shadow); transform-origin: top right;
+}
+.cstrip[data-dir="out"] .cmenu { right: auto; left: 0; transform-origin: top left; }
+.cmi { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; text-align: left; }
+.cmi:active, .cmi:focus-visible { background: var(--surface); }
+.cmi .coin { width: 28px; height: 28px; font-size: 15px; }
+.cmi-t { display: flex; flex-direction: column; line-height: 1.25; }
+.cmi-t b { font-size: 15px; font-weight: 600; color: var(--ink); }
+.cmi[aria-checked="true"] .cmi-t b { font-weight: 800; }
+.cmi-t small { font-size: 12px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Copias de los paneles que salen al cambiar de apartado (app.js las anima y las quita) */
+.slide-ghost { position: absolute; margin: 0 !important; pointer-events: none; }
 
 [hidden] { display: none !important; }
 
