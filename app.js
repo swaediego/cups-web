@@ -8,6 +8,7 @@
     USDT: { label: "USDT", symbol: "₮", url: "https://ve.dolarapi.com/v1/historicos/dolares/paralelo", official: false },
   };
   const LIVE_URL = "https://ve.dolarapi.com/v1/dolares";
+  const APP_VERSION = "1.3"; // misma versión que la APK; súbela cuando cambie
   const STORE = "cups.history.v1";
   const STORE_LIVE = "cups.usdtlive.v1";
   const STORE_SYNC = "cups.lastsync.v1";
@@ -90,6 +91,20 @@
     // Fundido entre temas con View Transitions (si el navegador lo soporta)
     if (document.startViewTransition && !reduceMotion.matches) document.startViewTransition(applyTheme);
     else applyTheme();
+  });
+
+  /* ---------- Información de la app ---------- */
+  const infoBtn = $("info"), infoCard = $("infoCard"), infoScrim = $("infoScrim");
+  $("infoVersion").textContent = "Versión " + APP_VERSION;
+  function setInfo(open) {
+    infoCard.classList.toggle("open", open);
+    infoScrim.classList.toggle("open", open);
+    infoBtn.setAttribute("aria-expanded", String(open));
+  }
+  infoBtn.addEventListener("click", () => setInfo(!infoCard.classList.contains("open")));
+  infoScrim.addEventListener("click", () => setInfo(false));
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && infoCard.classList.contains("open")) { e.preventDefault(); setInfo(false); }
   });
 
   /* ---------- Fechas ---------- */
@@ -481,7 +496,7 @@
   });
 
   document.addEventListener("keydown", (e) => {
-    if (state.mode !== "calc" || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (state.mode !== "calc" || e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
     const map = { "*": "×", "/": "÷", x: "×", "-": "−", ".": ",", Enter: "=", Backspace: "⌫", Escape: "C", Delete: "C" };
     const k = map[e.key] || e.key;
     if (/^[0-9]$/.test(k) || [",", "+", "−", "×", "÷", "=", "⌫", "C", "(", ")", "%"].includes(k)) { e.preventDefault(); press(k); }
