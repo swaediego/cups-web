@@ -464,6 +464,7 @@
     el.pad.hidden = !calc;
     el.modeBtns.forEach((b) => b.setAttribute("aria-selected", String(b.dataset.mode === state.mode)));
     el.modes.dataset.mode = state.mode;
+    document.body.dataset.mode = state.mode;
     el.clearConv.hidden = calc || !(el.foreignInput.value || el.bsInput.value);
     if (calc) renderPad();
   }

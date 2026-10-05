@@ -330,6 +330,58 @@ button:disabled { cursor: default; }
 /* Cambio de tema: fundido suave de toda la pantalla (View Transitions) */
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.35s; animation-timing-function: var(--ease); }
 
+/* ---------- Calculadora: todo cabe en una pantalla fija, sin deslizar ----------
+   Las tarjetas de moneda se encogen a burbujas con el símbolo, la variación se pliega
+   y el teclado reparte el alto que queda (entre 36 y 62 px por tecla). */
+.tiles { transition: gap 0.3s var(--ease-move), grid-template-columns 0.32s var(--ease-move); }
+.tile {
+  overflow: hidden; max-height: 112px;
+  transition: background 0.3s var(--ease), border-color 0.3s var(--ease), transform 0.16s var(--ease),
+    padding 0.3s var(--ease-move), gap 0.3s var(--ease-move), border-radius 0.3s var(--ease-move),
+    min-height 0.3s var(--ease-move), max-height 0.3s var(--ease-move);
+}
+.tile-top .coin { transition: width 0.3s var(--ease-move), height 0.3s var(--ease-move), font-size 0.3s var(--ease-move); }
+.tile-name { overflow: hidden; white-space: nowrap; max-width: 90px; transition: max-width 0.3s var(--ease-move), opacity 0.2s; }
+.tile-rate, .tile-date { overflow: hidden; max-height: 30px; transition: max-height 0.3s var(--ease-move), opacity 0.2s; }
+.change {
+  max-height: 120px; overflow: hidden;
+  transition: --tone 0.35s var(--ease), max-height 0.3s var(--ease-move), opacity 0.2s, margin 0.3s var(--ease-move),
+    padding 0.3s var(--ease-move), border-width 0.3s;
+}
+.pad { transition: none; }
+
+body[data-mode="calc"] .app { height: 100vh; height: 100dvh; min-height: 720px; }
+body[data-mode="calc"] .install { display: none; }
+body[data-mode="calc"] .tiles { grid-template-columns: repeat(3, 46px); justify-content: center; gap: 14px; }
+body[data-mode="calc"] .tile {
+  padding: 0; gap: 0; border-radius: 50%; min-height: 46px; max-height: 46px; align-items: center; justify-content: center;
+}
+body[data-mode="calc"] .tile:active { transform: scale(0.92); }
+body[data-mode="calc"] .tile[aria-selected="true"] { transform: scale(1.06); }
+body[data-mode="calc"] .tile-top { justify-content: center; gap: 0; }
+body[data-mode="calc"] .tile-top .coin { width: 26px; height: 26px; font-size: 14px; }
+body[data-mode="calc"] .tile-name { max-width: 0; opacity: 0; }
+body[data-mode="calc"] .tile-rate, body[data-mode="calc"] .tile-date { max-height: 0; min-height: 0; opacity: 0; }
+body[data-mode="calc"] .change {
+  max-height: 0; opacity: 0; margin-block: -9px; padding-block: 0; border-width: 0;
+}
+body[data-mode="calc"] .pad { flex: 1 1 0; min-height: 0; }
+body[data-mode="calc"] .expr { margin-top: auto; }
+body[data-mode="calc"] .keys {
+  height: calc(6 * 62px + 5 * 8px); min-height: calc(6 * 36px + 5 * 8px); flex: 0 1 auto; grid-template-rows: repeat(6, minmax(0, 1fr));
+}
+body[data-mode="calc"] .key { height: auto; min-height: 0; }
+/* Pantallas bajas: se aprietan los espacios para que siga cabiendo */
+@media (max-height: 780px) {
+  body[data-mode="calc"] .app { gap: 12px; min-height: 690px; }
+  body[data-mode="calc"] .change { margin-block: -6px; }
+  body[data-mode="calc"] .expr { font-size: 52px; }
+  body[data-mode="calc"] .expr[data-size="m"] { font-size: 44px; }
+  body[data-mode="calc"] .expr[data-size="s"] { font-size: 36px; }
+  body[data-mode="calc"] .expr[data-size="xs"] { font-size: 28px; }
+  body[data-mode="calc"] .keys { min-height: calc(6 * 34px + 5 * 8px); }
+}
+
 [hidden] { display: none !important; }
 
 @media (max-width: 360px) {
