@@ -218,25 +218,41 @@
     return o ? [todayISO(), Number(o.promedio)] : null;
   }
 
-  // silent: actualización automática, sin indicador de carga ni mensaje de error
-  async function refresh(silent = false) {
+  // Una tasa futura guardada no se pierde si la respuesta aún no la trae
+  const merge = (fetched, stored) => {
+    const last = fetched && fetched.length ? fetched[fetched.length - 1][0] : null;
+    return last ? fetched.concat(stored.filter((e) => e[0] > last)) : stored;
+  };
+
+  // ¿Hay guardada una tasa del BCV con fecha posterior a hoy?
+  const hasFuture = () => dates().some((d) => d > todayISO());
+  let lastNextCheck = 0;
+
+  // silent: actualización automática, sin indicador de carga ni mensaje de error.
+  // officialOnly: solo USD/EUR del BCV (comprobar la tasa futura); no toca el USDT ni lastSync.
+  async function refresh(silent = false, officialOnly = false) {
     if (state.loading) return;
     state.loading = true;
+    lastNextCheck = Date.now();
     if (!silent) { state.error = null; render(); }
-    const keys = Object.keys(CUR);
+    const keys = Object.keys(CUR).filter((c) => CUR[c].official || !officialOnly);
     const [fetched, live] = await Promise.all([
       Promise.all(keys.map((c) => fetchRates(c).catch(() => null))),
-      fetchLive().catch(() => null),
+      officialOnly ? null : fetchLive().catch(() => null),
     ]);
     const got = Object.fromEntries(keys.map((c, i) => [c, fetched[i]]));
     if (!got.USD && !got.EUR) {
       if (!silent) state.error = dates().length ? "Sin conexión, usando las tasas guardadas" : "Sin conexión y sin tasas guardadas";
     } else {
-      state.history = Object.fromEntries(keys.map((c) => [c, got[c] || state.history[c]]));
+      state.history = Object.fromEntries(Object.keys(CUR).map((c) => [c, CUR[c].official ? merge(got[c], state.history[c]) : got[c] || state.history[c]]));
       try { localStorage.setItem(STORE, JSON.stringify(state.history)); } catch (_) {}
       if (live) {
         state.usdtLive = live;
         try { localStorage.setItem(STORE_LIVE, JSON.stringify(live)); } catch (_) {}
+      }
+      if (!officialOnly) {
+        lastSync = Date.now();
+        try { localStorage.setItem(STORE_SYNC, String(lastSync)); } catch (_) {}
       }
       recalc();
     }
@@ -762,6 +778,8 @@
   // Si lo guardado tiene más de 10 min se actualiza en silencio (salvo la primera vez, sin datos).
   function refreshIfStale() {
     if (Date.now() - lastSync > 10 * 60 * 1000) refresh(dates().length > 0);
+    // Sin tasa futura guardada: pregunta solo por el BCV aunque el resto esté fresco (máx. cada 5 min)
+    else if (!hasFuture() && Date.now() - lastNextCheck > 5 * 60 * 1000) refresh(true, true);
   }
   refreshIfStale();
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refreshIfStale(); });
