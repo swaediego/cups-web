@@ -218,6 +218,31 @@
     return o ? [todayISO(), Number(o.promedio)] : null;
   }
 
+  // Segunda fuente del BCV: publica la tasa del siguiente día antes que dolarapi (fecha valor + USD/EUR)
+  const NEXT_URL = "https://datos.cromstudio.com.ve/tasa";
+  const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+  async function fetchNextBcv() {
+    const o = await getJSON(NEXT_URL);
+    const m = /(\d{1,2})\s+([A-Za-zñÑ]+)\s+(\d{4})/.exec(String(o.fecha_valor));
+    const mi = m ? MONTHS.indexOf(m[2].toLowerCase()) : -1;
+    if (mi < 0) return null;
+    return { date: `${m[3]}-${pad2(mi + 1)}-${pad2(Number(m[1]))}`, rates: { USD: Number(o.tasas && o.tasas.USD), EUR: Number(o.tasas && o.tasas.EUR) } };
+  }
+
+  // Si aún no hay tasa futura guardada, la busca en la segunda fuente; descarta valores muy distintos a la última tasa
+  async function addNext(h) {
+    const last = [...h.USD, ...h.EUR].map((e) => e[0]).sort().pop() || null;
+    if (last && last > todayISO()) return h;
+    const n = await fetchNextBcv().catch(() => null);
+    if (!n || (last && n.date <= last)) return h;
+    const out = { ...h };
+    for (const c of ["USD", "EUR"]) {
+      const v = n.rates[c], l = h[c];
+      if (Number.isFinite(v) && v > 0 && l.length && Math.abs(v / l[l.length - 1][1] - 1) <= 0.2) out[c] = l.concat([[n.date, v]]);
+    }
+    return out;
+  }
+
   // Una tasa futura guardada no se pierde si la respuesta aún no la trae
   const merge = (fetched, stored) => {
     const last = fetched && fetched.length ? fetched[fetched.length - 1][0] : null;
@@ -244,7 +269,7 @@
     if (!got.USD && !got.EUR) {
       if (!silent) state.error = dates().length ? "Sin conexión, usando las tasas guardadas" : "Sin conexión y sin tasas guardadas";
     } else {
-      state.history = Object.fromEntries(Object.keys(CUR).map((c) => [c, CUR[c].official ? merge(got[c], state.history[c]) : got[c] || state.history[c]]));
+      state.history = await addNext(Object.fromEntries(Object.keys(CUR).map((c) => [c, CUR[c].official ? merge(got[c], state.history[c]) : got[c] || state.history[c]])));
       try { localStorage.setItem(STORE, JSON.stringify(state.history)); } catch (_) {}
       if (live) {
         state.usdtLive = live;
