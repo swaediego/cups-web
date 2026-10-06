@@ -12,6 +12,7 @@
   const STORE = "cups.history.v1";
   const STORE_LIVE = "cups.usdtlive.v1";
   const STORE_SYNC = "cups.lastsync.v1";
+  const STORE_SAMPLES = "cups.usdtsamples.v1"; // [ [ms, valor], ... ] del USDT para comparar con hace ~1 hora
 
   const $ = (id) => document.getElementById(id);
   const appEl = document.querySelector(".app");
@@ -35,6 +36,7 @@
   /* ---------- Estado ---------- */
   const state = {
     history: { USD: [], EUR: [], USDT: [] }, // [[ "YYYY-MM-DD", valor ], ...] ascendente
+    samples: [], // muestras [ms, valor] del USDT en vivo
     usdtLive: null, // [ fecha, valor ] del promedio USDT de ahora
     currency: "USD",
     pinned: null, // fecha elegida; null = seguir la tasa vigente de hoy
@@ -53,6 +55,8 @@
     if (saved && saved.USD && saved.EUR) state.history = { USDT: [], ...saved };
     const live = JSON.parse(localStorage.getItem(STORE_LIVE) || "null");
     if (Array.isArray(live) && live.length === 2) state.usdtLive = live;
+    const smp = JSON.parse(localStorage.getItem(STORE_SAMPLES) || "[]");
+    if (Array.isArray(smp)) state.samples = smp;
   } catch (_) { /* sin almacenamiento: seguimos con memoria */ }
 
   /* ---------- Movimiento ---------- */
@@ -165,6 +169,15 @@
 
   // Cambio frente a la publicación anterior de la misma moneda
   function changeFor(c) {
+    // USDT de hoy: contra la última muestra de hace una hora o más (hasta 6 h); sin ella, contra la publicación anterior
+    if (c === "USDT" && !state.pinned && state.usdtLive) {
+      const now = Date.now(), cur = state.usdtLive[1];
+      const ref = [...state.samples].reverse().find((x) => now - x[0] >= 50 * 60000 && now - x[0] <= 6 * 3600000);
+      if (ref) {
+        const diff = cur - ref[1];
+        return { diff, pct: (diff / ref[1]) * 100, hours: Math.max(1, Math.round((now - ref[0]) / 3600000)) };
+      }
+    }
     const r = rateFor(c);
     if (!r) return null;
     const list = state.history[c];
@@ -273,6 +286,11 @@
       try { localStorage.setItem(STORE, JSON.stringify(state.history)); } catch (_) {}
       if (live) {
         state.usdtLive = live;
+        const now = Date.now(), last = state.samples[state.samples.length - 1];
+        if (!last || now - last[0] >= 10 * 60000) {
+          state.samples = state.samples.filter((x) => now - x[0] <= 8 * 3600000).concat([[now, live[1]]]);
+          try { localStorage.setItem(STORE_SAMPLES, JSON.stringify(state.samples)); } catch (_) {}
+        }
         try { localStorage.setItem(STORE_LIVE, JSON.stringify(live)); } catch (_) {}
       }
       if (!officialOnly) {
@@ -348,7 +366,8 @@
     const up = ch.diff > 0.0049, down = ch.diff < -0.0049;
     el.change.dataset.tone = up ? "up" : down ? "down" : "flat";
     const verb = up ? "subió" : down ? "bajó" : "se mantuvo";
-    setText(el.changeTop, `${CUR[cur].label} ${verb} vs. ${shortDate(ch.since)}`);
+    const since = ch.hours ? (ch.hours === 1 ? "en la última hora" : `en las últimas ${ch.hours} horas`) : `vs. ${shortDate(ch.since)}`;
+    setText(el.changeTop, `${CUR[cur].label} ${verb} ${since}`);
     setText(el.changeMain, `${up ? "▲ +" : down ? "▼ −" : "• "}${money.format(Math.abs(ch.diff))} Bs`);
     setText(el.changePct, `${up ? "+" : down ? "−" : ""}${money.format(Math.abs(ch.pct))}%`);
   }
