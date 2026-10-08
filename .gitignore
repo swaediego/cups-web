@@ -1,2 +1,19 @@
 .DS_Store
 Thumbs.db
+
+# Secretos
+.env
+.env.*
+*.pem
+*.p12
+*.pfx
+*.key
+secrets.*
+
+# Contexto de cómo se hizo el proyecto (instrucciones/notas para el asistente)
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+AGENTS.md
+NOTES.md
+PROMPTS.md
