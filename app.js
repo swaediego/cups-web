@@ -17,16 +17,20 @@
   const $ = (id) => document.getElementById(id);
   const appEl = document.querySelector(".app");
   const el = {
-    refresh: $("refresh"), prev: $("prev"), next: $("next"), badge: $("badge"), goToday: $("goToday"),
-    dateLabel: $("dateLabel"), dateValue: $("dateValue"), datePick: $("datePick"),
+    refresh: $("refresh"),
     foreignInput: $("foreignInput"), bsInput: $("bsInput"), foreignCoin: $("foreignCoin"), foreignName: $("foreignName"),
     copyForeign: $("copyForeign"), copyBs: $("copyBs"), copiedForeign: $("copiedForeign"), copiedBs: $("copiedBs"),
-    ratePill: $("ratePill"), status: $("status"), clearConv: $("clearConv"),
-    modeBtns: document.querySelectorAll(".mode-btn"), conv: $("conv"), pad: $("pad"),
+    status: $("status"), clearConv: $("clearConv"),
     change: $("change"), changeTop: $("changeTop"), changeMain: $("changeMain"), changePct: $("changePct"), changeEmpty: $("changeEmpty"), changeBody: $("changeBody"),
     expr: $("expr"), cstrip: $("cstrip"), cBs: $("cBs"), cSwap: $("cSwap"), cFor: $("cFor"), cForCoin: $("cForCoin"),
-    cForWrap: $("cForWrap"), cMenu: $("cMenu"), converted: $("converted"), keys: $("keys"), modes: document.querySelector(".modes"),
+    cForWrap: $("cForWrap"), cMenu: $("cMenu"), converted: $("converted"), keys: $("keys"),
   };
+
+  // La barra de fecha está dos veces (panel principal y Calculadora) y las dos muestran y cambian la misma fecha
+  const bars = ["", "cal"].map((p) => {
+    const id = (n) => $(p ? p + n[0].toUpperCase() + n.slice(1) : n);
+    return { prev: id("prev"), next: id("next"), badge: id("badge"), goToday: id("goToday"), label: id("dateLabel"), value: id("dateValue"), pick: id("datePick") };
+  });
 
   const ICON_COPY = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8.5" y="8.5" width="12" height="12" rx="3.2"/><path d="M15.5 4.5h-7a4 4 0 0 0-4 4v7"/></svg>';
   const ICON_CHECK = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7"/></svg>';
@@ -42,7 +46,6 @@
     pinned: null, // fecha elegida; null = seguir la tasa vigente de hoy
     lastEdited: "foreign",
     dir: 0, // sentido del último cambio de fecha: -1 atrás, 1 adelante
-    mode: "convert", // convert | calc
     calcInBs: true, // la calculadora trabaja en bolívares y muestra la divisa; false: al revés
     expr: "",
     justEvaluated: false,
@@ -101,6 +104,7 @@
     const label = "Tema: " + THEME_NAMES[themeMode];
     themeBtn.setAttribute("aria-label", label);
     themeBtn.title = label;
+    $("themeValue").textContent = THEME_NAMES[themeMode][0].toUpperCase() + THEME_NAMES[themeMode].slice(1);
   }
   applyTheme();
   systemDark.addEventListener("change", () => { if (themeMode === "auto") applyTheme(); });
@@ -124,18 +128,21 @@
   fit();
   window.addEventListener("resize", fit);
 
-  /* ---------- Información de la app ---------- */
-  const infoBtn = $("info"), infoCard = $("infoCard"), infoScrim = $("infoScrim");
+  /* ---------- Menú lateral (tasa personalizada, tema e información de la versión) ---------- */
+  const menuBtn = $("menu"), drawer = $("drawer"), drawerScrim = $("drawerScrim");
   $("infoVersion").textContent = "Versión " + APP_VERSION;
-  function setInfo(open) {
-    infoCard.classList.toggle("open", open);
-    infoScrim.classList.toggle("open", open);
-    infoBtn.setAttribute("aria-expanded", String(open));
+  function setMenu(open) {
+    drawer.classList.toggle("open", open);
+    drawerScrim.classList.toggle("open", open);
+    drawer.inert = !open;
+    menuBtn.setAttribute("aria-expanded", String(open));
+    if (open) drawer.focus({ preventScroll: true }); // el foco entra al panel; con Tab llega al primer elemento
   }
-  infoBtn.addEventListener("click", () => setInfo(!infoCard.classList.contains("open")));
-  infoScrim.addEventListener("click", () => setInfo(false));
+  menuBtn.addEventListener("click", () => setMenu(true));
+  $("menuClose").addEventListener("click", () => setMenu(false));
+  drawerScrim.addEventListener("click", () => setMenu(false));
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && infoCard.classList.contains("open")) { e.preventDefault(); setInfo(false); }
+    if (e.key === "Escape" && drawer.classList.contains("open")) { e.preventDefault(); setMenu(false); }
   });
 
   /* ---------- Fechas ---------- */
@@ -317,17 +324,19 @@
       else if (sel === current) label = sel === todayISO() ? "Tasa de hoy" : "Tasa vigente";
       else label = "Tasa anterior";
     }
-    setText(el.dateLabel, state.loading && !sel ? "Cargando…" : label, state.dir * 10);
-    setText(el.dateValue, sel ? longDate(sel) : "—", state.dir * 14);
-    el.prev.disabled = !prevDate();
-    el.next.disabled = !nextDate();
-    el.badge.hidden = !(nextDate() && sel === current);
-    el.goToday.hidden = !(sel && sel !== current);
-    const all = dates();
-    if (all.length) {
-      el.datePick.min = all[0];
-      el.datePick.max = all[all.length - 1];
-      el.datePick.value = sel || "";
+    const nextD = nextDate(), prevD = prevDate(), all = dates();
+    for (const b of bars) {
+      setText(b.label, state.loading && !sel ? "Cargando…" : label, state.dir * 10);
+      setText(b.value, sel ? longDate(sel) : "—", state.dir * 14);
+      b.prev.disabled = !prevD;
+      b.next.disabled = !nextD;
+      b.badge.hidden = !(nextD && sel === current);
+      b.goToday.hidden = !(sel && sel !== current);
+      if (all.length) {
+        b.pick.min = all[0];
+        b.pick.max = all[all.length - 1];
+        b.pick.value = sel || "";
+      }
     }
 
     // Tarjetas
@@ -346,10 +355,10 @@
     el.foreignCoin.className = "coin coin-sm coin-" + cur.toLowerCase();
     el.foreignName.textContent = CUR[cur].label;
     el.copyForeign.setAttribute("aria-label", "Copiar " + CUR[cur].label);
-    const r = rateFor(cur);
-    setText(el.ratePill, r ? `1 ${CUR[cur].symbol} = Bs. ${money.format(r.value)}` : "—");
     syncCopyState();
-    renderMode();
+    renderStrip();
+    renderPad();
+    renderCompare(); // la comparación de la tasa personalizada usa estas mismas tasas
 
     state.dir = 0;
     el.refresh.classList.toggle("loading", state.loading);
@@ -377,7 +386,7 @@
     el.copyBs.disabled = !el.bsInput.value;
     el.foreignInput.classList.toggle("long", el.foreignInput.value.length > 10);
     el.bsInput.classList.toggle("long", el.bsInput.value.length > 10);
-    el.clearConv.hidden = state.mode !== "convert" || !(el.foreignInput.value || el.bsInput.value);
+    el.clearConv.hidden = !(el.foreignInput.value || el.bsInput.value);
   }
 
   /* ---------- Entradas ---------- */
@@ -412,7 +421,7 @@
   function pin(d) {
     const cur = selectedDate(), target = d || currentDate();
     state.dir = cur && target && target !== cur ? (target < cur ? -1 : 1) : 0;
-    const dir = state.dir, old = dir && state.mode === "convert" && !reduceMotion.matches ? snapshotPage() : null;
+    const dir = state.dir, old = dir && !calcScreen.open && !reduceMotion.matches ? snapshotPage() : null;
     state.pinned = d === currentDate() ? null : d;
     recalc();
     render();
@@ -442,16 +451,18 @@
       { duration: 440, easing: PAGE_EASE }
     ).onfinish = () => old.remove();
   }
-  el.prev.addEventListener("click", () => pin(prevDate()));
-  el.next.addEventListener("click", () => pin(nextDate()));
-  el.goToday.addEventListener("click", () => pin(null));
-  // Un día del calendario usa la tasa vigente ese día (fines de semana → la del viernes)
-  el.datePick.addEventListener("change", () => {
-    const day = el.datePick.value;
-    if (!day) return;
-    const d = dates();
-    pin([...d].reverse().find((x) => x <= day) || d[0]);
-  });
+  for (const b of bars) {
+    b.prev.addEventListener("click", () => pin(prevDate()));
+    b.next.addEventListener("click", () => pin(nextDate()));
+    b.goToday.addEventListener("click", () => pin(null));
+    // Un día del calendario usa la tasa vigente ese día (fines de semana → la del viernes)
+    b.pick.addEventListener("change", () => {
+      const day = b.pick.value;
+      if (!day) return;
+      const d = dates();
+      pin([...d].reverse().find((x) => x <= day) || d[0]);
+    });
+  }
   el.refresh.addEventListener("click", () => refresh());
 
   /* ---------- Modo calculadora ---------- */
@@ -574,83 +585,43 @@
     el.converted.dataset.to = inBs ? "foreign" : "bs";
   }
 
-  function renderMode() {
-    const calc = state.mode === "calc";
-    el.conv.hidden = calc;
-    el.pad.hidden = !calc;
-    el.cstrip.hidden = !calc;
-    if (calc) renderStrip();
-    el.modeBtns.forEach((b) => b.setAttribute("aria-selected", String(b.dataset.mode === state.mode)));
-    el.modes.dataset.mode = state.mode;
-    document.body.dataset.mode = state.mode;
-    el.clearConv.hidden = calc || !(el.foreignInput.value || el.bsInput.value);
-    if (calc) renderPad();
-  }
-
-  el.modeBtns.forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
-
-  /* ---------- Convertir ↔ Calculadora: pasar de página ----------
-     Igual que en la APK: el diseño final aparece de una vez y lo nuevo entra deslizando de lado con un resorte
-     mientras una copia de lo anterior sale por el otro lado. Solo se animan transform y opacity (sin recalcular). */
+  /* ---------- Pantallas aparte: Calculadora y Tasa personalizada ----------
+     Cada una se desliza desde la derecha sobre la app y añade una entrada al historial: el botón o gesto de atrás
+     del teléfono la cierra, igual que la flecha de su cabecera. */
   const SPRING = { type: "spring", stiffness: 260, damping: 29, mass: 1 }; // = dampingRatio 0.9 de la APK
   const anim = (node, kf, opts) => (window.Motion ? window.Motion.animate(node, kf, opts) : null);
-  const headerOf = (m) => (m === "calc" ? el.cstrip : $("pageClip"));
-  const panelOf = (m) => (m === "calc" ? el.pad : el.conv);
 
-  function ghost(node) {
-    const g = node.cloneNode(true);
-    g.removeAttribute("id");
-    g.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
-    g.classList.add("slide-ghost");
-    g.setAttribute("aria-hidden", "true");
-    g.inert = true;
-    Object.assign(g.style, { top: node.offsetTop + "px", left: node.offsetLeft + "px", width: node.offsetWidth + "px", height: node.offsetHeight + "px" });
-    return g;
+  function makeScreen(view, key, onHide) {
+    const s = {
+      open: false,
+      show() {
+        if (s.open) return;
+        s.open = true;
+        history.pushState({ [key]: 1 }, "");
+        setMenu(false);
+        view.inert = false;
+        view.classList.add("open");
+      },
+      hide(fromHistory = false) {
+        if (!s.open) return;
+        if (!fromHistory && history.state && history.state[key]) { history.back(); return; }
+        s.open = false;
+        if (view.contains(document.activeElement)) document.activeElement.blur();
+        if (onHide) onHide();
+        view.classList.remove("open");
+        view.inert = true;
+      },
+    };
+    return s;
   }
-
-  function setMode(m, fromHistory = false) {
-    if (state.mode === m) return;
-    // El botón/gesto de atrás del teléfono vuelve de la Calculadora a Convertir
-    if (m === "convert" && !fromHistory && history.state && history.state.calc) { history.back(); return; }
-    if (m === "calc" && !(history.state && history.state.calc)) history.pushState({ calc: 1 }, "");
-    const moving = !reduceMotion.matches && window.Motion;
-    const dir = m === "calc" ? 1 : -1;
-    const ghosts = moving ? [headerOf(state.mode), panelOf(state.mode)].filter((n) => !n.hidden).map(ghost) : [];
-    closeMenu();
-    state.mode = m;
-    render();
-    if (!moving) return;
-    for (const g of ghosts) {
-      appEl.appendChild(g);
-      const a = anim(g, { x: ["0%", `${-dir * 100}%`], opacity: [1, 0] }, { x: SPRING, opacity: { duration: 0.26, ease: "easeOut" } });
-      a.finished.then(() => g.remove(), () => g.remove());
-    }
-    for (const n of [headerOf(m), panelOf(m)]) {
-      anim(n, { x: [`${dir * 100}%`, "0%"], opacity: [0, 1] }, { x: SPRING, opacity: { duration: 0.22, ease: "easeOut" } });
-    }
-    if (m === "convert") anim(el.modes, { opacity: [0, 1] }, { duration: 0.22, delay: 0.06, ease: "easeOut" });
-  }
-  window.addEventListener("popstate", () => { if (state.mode === "calc") setMode("convert", true); });
-  if (history.state && history.state.calc) history.replaceState(null, "");
-  $("dotBack").addEventListener("click", () => setMode("convert"));
-
-  // Deslizar el dedo desde cualquier parte: a la derecha vuelve a Convertir, a la izquierda entra a la Calculadora
-  let swipeX = null, swipeY = 0, swiped = false;
-  appEl.addEventListener("pointerdown", (e) => {
-    swipeX = e.isPrimary && !e.target.closest("input, .cmenu") ? e.clientX : null;
-    swipeY = e.clientY;
-  }, true);
-  appEl.addEventListener("pointercancel", () => { swipeX = null; }, true);
-  appEl.addEventListener("pointerup", (e) => {
-    if (swipeX === null) return;
-    const dx = e.clientX - swipeX, dy = e.clientY - swipeY;
-    swipeX = null;
-    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    if (dx > 0 && state.mode === "calc") { swiped = true; setMode("convert"); }
-    else if (dx < 0 && state.mode === "convert") { swiped = true; setMode("calc"); }
-  }, true);
-  // Un deslizamiento no cuenta como toque en la tecla o tarjeta donde empezó
-  appEl.addEventListener("click", (e) => { if (swiped) { swiped = false; e.stopPropagation(); e.preventDefault(); } }, true);
+  const calcScreen = makeScreen($("calcView"), "calc", () => closeMenu());
+  $("calcOpen").addEventListener("click", () => calcScreen.show());
+  $("calcBack").addEventListener("click", () => calcScreen.hide());
+  window.addEventListener("popstate", () => {
+    if (custom.open) custom.hide(true);
+    else if (calcScreen.open) calcScreen.hide(true);
+  });
+  if (history.state && (history.state.calc || history.state.custom)) history.replaceState(null, "");
 
   /* ---------- Franja de monedas de la calculadora ---------- */
   function renderStrip() {
@@ -731,7 +702,7 @@
   });
 
   document.addEventListener("keydown", (e) => {
-    if (state.mode !== "calc" || e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!calcScreen.open || drawer.classList.contains("open") || e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
     const map = { "*": "×", "/": "÷", x: "×", "-": "−", ".": ",", Enter: "=", Backspace: "⌫", Escape: "C", Delete: "C" };
     const k = map[e.key] || e.key;
     if (/^[0-9]$/.test(k) || [",", "+", "−", "×", "÷", "=", "⌫", "C", "(", ")", "%"].includes(k)) { e.preventDefault(); press(k); }
@@ -774,6 +745,104 @@
   }
   wireCopy(el.copyForeign, el.foreignInput, el.copiedForeign);
   wireCopy(el.copyBs, el.bsInput, el.copiedBs);
+
+  /* ---------- Tasa personalizada ----------
+     Tasa × monto en dólares = bolívares (o al revés). Es independiente de las tasas del BCV: no toca nada de lo anterior.
+     Solo se guarda la tasa elegida; los montos empiezan en blanco cada vez. */
+  const STORE_CUSTOM = "cups.customrate.v1";
+  const cv = {
+    view: $("customView"), rate: $("rateInput"), foreign: $("cForeignInput"), bs: $("cBsInput"),
+    copyForeign: $("cCopyForeign"), copyBs: $("cCopyBs"), clear: $("customClear"),
+  };
+  // last: qué campo editó el usuario por última vez
+  const custom = Object.assign(makeScreen(cv.view, "custom"), { last: "foreign" });
+  cv.copyForeign.innerHTML = ICON_COPY;
+  cv.copyBs.innerHTML = ICON_COPY;
+  try { cv.rate.value = localStorage.getItem(STORE_CUSTOM) || ""; } catch (_) {}
+
+  const fmtSafe = (v) => (Number.isFinite(v) && Math.abs(v) < 1e15 ? fmt(v) : "");
+
+  function recalcCustom() {
+    const rate = parse(cv.rate.value), ok = rate !== null && rate > 0;
+    if (custom.last === "foreign") {
+      const f = parse(cv.foreign.value);
+      cv.bs.value = ok && f !== null ? fmtSafe(f * rate) : "";
+    } else {
+      const b = parse(cv.bs.value);
+      cv.foreign.value = ok && b !== null ? fmtSafe(b / rate) : "";
+    }
+    const typed = cv.foreign.value || cv.bs.value;
+    cv.copyForeign.disabled = !cv.foreign.value;
+    cv.copyBs.disabled = !cv.bs.value;
+    for (const i of [cv.foreign, cv.bs]) i.classList.toggle("long", i.value.length > 10);
+    cv.rate.classList.toggle("need", !ok && !!typed); // montos sin tasa: la píldora se marca (sin añadir texto, para no mover nada)
+    cv.clear.hidden = !typed;
+    renderCompare();
+  }
+
+  // Comparación: el mismo monto a tu tasa y a la tasa de la moneda elegida (la del BCV, o el promedio en el caso del USDT)
+  const STORE_CMP = "cups.customcmp.v1";
+  const CMP_ORDER = ["USD", "EUR", "USDT"];
+  const cmp = { root: $("cmp"), tabs: $("cmpTabs"), cur: "USD" };
+  try { const c = localStorage.getItem(STORE_CMP); if (CMP_ORDER.includes(c)) cmp.cur = c; } catch (_) {}
+
+  function renderCompare() {
+    const c = cmp.cur, r = rateFor(c);
+    cmp.root.dataset.cur = c;
+    cmp.tabs.dataset.i = String(CMP_ORDER.indexOf(c));
+    cmp.tabs.querySelectorAll(".cmp-tab").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.cur === c)));
+
+    const name = CUR[c].official ? `${CUR[c].label} BCV` : "USDT promedio";
+    const rate = parse(cv.rate.value), has = rate !== null && rate > 0;
+    // El monto sale de lo último que escribió el usuario (si fueron bolívares, sin el redondeo del campo de dólares)
+    const amount = !has ? null : custom.last === "foreign" ? parse(cv.foreign.value) : (parse(cv.bs.value) ?? NaN) / rate;
+    const ready = has && r && Number.isFinite(amount);
+    const mine = ready ? amount * rate : 0, market = ready ? amount * r.value : 0;
+    const when = !r ? "" : c === "USDT" && r.date === todayISO() ? "en vivo" : shortDate(r.date);
+
+    setText($("cmpMarketName"), name);
+    setText($("cmpMineSub"), has ? `Bs. ${money.format(rate)}` : "—");
+    setText($("cmpMarketSub"), r ? `Bs. ${money.format(r.value)} · ${when}` : "sin datos");
+    setText($("cmpMine"), ready ? `Bs. ${money.format(mine)}` : "—");
+    setText($("cmpMarket"), ready ? `Bs. ${money.format(market)}` : "—");
+
+    const diff = mine - market, up = ready && diff > 0.0049, down = ready && diff < -0.0049;
+    $("cmpDiff").dataset.tone = up ? "up" : down ? "down" : "flat";
+    setText($("cmpDiffTop"), ready ? `Tu tasa vs ${name}` : "Diferencia");
+    setText($("cmpDiffMain"), !ready ? "—" : `${up ? "▲ +" : down ? "▼ −" : "• "}${money.format(Math.abs(diff))} Bs`);
+    setText($("cmpDiffPct"), ready && market ? `${up ? "+" : down ? "−" : ""}${money.format(Math.abs((diff / market) * 100))}%` : "—");
+  }
+  cmp.tabs.addEventListener("click", (e) => {
+    const t = e.target.closest(".cmp-tab");
+    if (!t) return;
+    cmp.cur = t.dataset.cur;
+    try { localStorage.setItem(STORE_CMP, cmp.cur); } catch (_) {}
+    renderCompare();
+  });
+
+  cv.rate.addEventListener("input", () => {
+    sanitize(cv.rate);
+    try { localStorage.setItem(STORE_CUSTOM, cv.rate.value); } catch (_) {}
+    recalcCustom();
+  });
+  cv.foreign.addEventListener("input", () => { sanitize(cv.foreign); custom.last = "foreign"; recalcCustom(); });
+  cv.bs.addEventListener("input", () => { sanitize(cv.bs); custom.last = "bs"; recalcCustom(); });
+  for (const i of [cv.rate, cv.foreign, cv.bs]) i.addEventListener("keydown", (e) => { if (e.key === "Enter") i.blur(); });
+  cv.clear.addEventListener("click", () => { cv.foreign.value = ""; cv.bs.value = ""; custom.last = "foreign"; recalcCustom(); });
+  wireCopy(cv.copyForeign, cv.foreign, $("cCopiedForeign"));
+  wireCopy(cv.copyBs, cv.bs, $("cCopiedBs"));
+
+  // Abre desde el menú; si aún no hay tasa, el cursor entra directo en ella
+  function openCustom() {
+    custom.show();
+    if (!(parse(cv.rate.value) > 0)) cv.rate.focus({ preventScroll: true });
+  }
+  $("customOpen").addEventListener("click", openCustom);
+  $("customBack").addEventListener("click", () => custom.hide());
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && custom.open) { e.preventDefault(); custom.hide(); }
+  });
+  recalcCustom();
 
   /* ---------- Instalación (PWA) ---------- */
   const installBox = $("install"), installBody = $("installBody"), installBtn = $("installBtn");

@@ -107,36 +107,134 @@ button:disabled { cursor: default; }
 }
 .icon-btn:active, .nav-btn:active:not(:disabled) { transform: scale(0.92); }
 /* El icono muestra el modo elegido: automático (por defecto), claro u oscuro */
-.icon-btn .sun, .icon-btn .moon { display: none; }
-:root[data-mode="light"] .icon-btn .auto, :root[data-mode="dark"] .icon-btn .auto { display: none; }
-:root[data-mode="light"] .icon-btn .sun { display: block; }
-:root[data-mode="dark"] .icon-btn .moon { display: block; }
+.theme-ic .sun, .theme-ic .moon { display: none; }
+:root[data-mode="light"] .theme-ic .auto, :root[data-mode="dark"] .theme-ic .auto { display: none; }
+:root[data-mode="light"] .theme-ic .sun { display: block; }
+:root[data-mode="dark"] .theme-ic .moon { display: block; }
 .header { gap: 10px; }
 .icon-btn.loading svg { animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Información de la app: tarjeta flotante bajo el botón "i" que crece desde su esquina */
-.info-wrap { position: relative; }
-.info-wrap .icon-btn svg { transition: transform 0.26s var(--ease); }
+.icon-btn svg { transition: transform 0.26s var(--ease); }
 .icon-btn[aria-expanded="true"] svg { transform: scale(0.88); }
-.info-card {
-  position: absolute; top: calc(100% + 10px); right: 0; z-index: 31; width: 200px;
-  display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; border-radius: 22px;
-  background: var(--paper); border: 1px solid var(--line); box-shadow: 0 20px 40px -12px var(--shadow);
-  transform-origin: calc(100% - 24px) 0; opacity: 0; visibility: hidden; transform: scale(0.9) translateY(-4px);
-  pointer-events: none;
-  transition: opacity 0.12s var(--ease), transform 0.15s var(--ease), visibility 0s 0.15s;
+
+/* Menú lateral: un panel que entra desde la derecha sobre una capa que oscurece la app.
+   Vive fuera de .app, así que repite el zoom (--ui) para escalar igual que el resto. */
+.drawer-scrim {
+  position: fixed; inset: 0; z-index: 40; background: rgba(5, 10, 20, 0.42);
+  opacity: 0; visibility: hidden; transition: opacity 0.28s var(--ease), visibility 0s 0.28s;
 }
-.info-card.open {
-  opacity: 1; visibility: visible; transform: none; pointer-events: auto;
-  /* entrada con un pequeño rebote */
-  transition: opacity 0.16s var(--ease), transform 0.34s cubic-bezier(0.34, 1.56, 0.64, 1), visibility 0s;
+.drawer-scrim.open { opacity: 1; visibility: visible; transition: opacity 0.28s var(--ease), visibility 0s; }
+.drawer {
+  zoom: var(--ui, 1);
+  position: fixed; top: 0; right: 0; z-index: 41; width: 300px; max-width: calc(88vw / var(--ui, 1));
+  height: calc(100vh / var(--ui, 1)); height: calc(100dvh / var(--ui, 1));
+  display: flex; flex-direction: column; gap: 16px;
+  padding: calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 20px) 16px;
+  background: var(--paper); border-left: 1px solid var(--line); border-radius: 28px 0 0 28px;
+  box-shadow: -20px 0 40px -16px var(--shadow);
+  transform: translateX(104%); visibility: hidden;
+  transition: transform 0.36s var(--ease-move), visibility 0s 0.36s;
 }
-.info-name { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.2; }
-.info-version { font-size: 14px; font-weight: 600; color: var(--muted); }
-/* Capa invisible: tocar fuera de la tarjeta la cierra sin activar lo que haya debajo */
-.scrim { position: fixed; inset: 0; z-index: 30; display: none; }
-.scrim.open { display: block; }
+.drawer:focus { outline: 0; }
+.drawer.open { transform: none; visibility: visible; transition: transform 0.4s var(--ease-move), visibility 0s; }
+.drawer-head { display: flex; align-items: center; justify-content: space-between; padding-left: 6px; }
+.drawer-title { font-size: 30px; font-weight: 800; letter-spacing: -0.8px; line-height: 1; }
+.drawer-list { display: flex; flex-direction: column; gap: 10px; }
+.mi {
+  width: 100%; display: flex; align-items: center; gap: 14px; padding: 12px 14px 12px 12px; border-radius: 22px; text-align: left;
+  background: var(--surface); border: 1px solid var(--line); transition: transform 0.16s var(--ease), background 0.2s;
+}
+button.mi:active { transform: scale(0.97); }
+.mi-static { margin-top: 6px; background: transparent; border-style: dashed; }
+.mi-ic {
+  flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--paper); border: 1px solid var(--line); color: var(--ink);
+}
+.mi-gold { background: color-mix(in srgb, var(--gold) 22%, transparent); border-color: color-mix(in srgb, var(--gold) 55%, transparent); color: var(--gold-ink); }
+.mi-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; line-height: 1.25; }
+.mi-t b { font-size: 15px; font-weight: 700; }
+.mi-t small { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.mi-chev { flex: none; color: var(--hint); }
+
+/* Tasa personalizada: pantalla completa que se desliza desde la derecha (mismo tamaño y relleno que .app) */
+.view {
+  --accent: var(--gold); --accent-ink: var(--gold-ink);
+  position: fixed; inset: 0; z-index: 50; overflow-y: auto; overscroll-behavior: contain;
+  background: radial-gradient(120% 60% at 10% -10%, color-mix(in srgb, var(--gold) 17%, transparent), transparent 70%), var(--paper);
+  transform: translateX(100%); visibility: hidden;
+  transition: transform 0.4s var(--ease-move), visibility 0s 0.4s;
+}
+.view.open { transform: none; visibility: visible; transition: transform 0.44s var(--ease-move), visibility 0s; }
+.view-in {
+  zoom: var(--ui, 1); max-width: 520px; margin: 0 auto; min-height: calc(100vh / var(--ui, 1)); min-height: calc(100dvh / var(--ui, 1));
+  padding: calc(env(safe-area-inset-top) + 12px) calc(env(safe-area-inset-right) + 20px)
+           calc(env(safe-area-inset-bottom) + 20px) calc(env(safe-area-inset-left) + 20px);
+  display: flex; flex-direction: column; gap: 18px;
+}
+.view-head { display: flex; align-items: center; gap: 12px; }
+.view-title { margin: 0; flex: 1; min-width: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.7px; line-height: 1.1; }
+.view.open .calc { animation: panel 0.5s var(--ease) 0.1s both; }
+/* Tu tasa [campo]: una línea sobre la tarjeta, con el campo en forma de píldora */
+.rate-line { display: flex; align-items: center; gap: 12px; padding: 0 4px; }
+.view.open .rate-line { animation: panel 0.5s var(--ease) 0.06s both; }
+.rate-label { flex: none; font-size: 18px; font-weight: 800; letter-spacing: -0.3px; }
+.rate-input {
+  flex: 1; min-width: 0; height: 56px; padding: 0 22px; border-radius: 999px; font-family: inherit;
+  font-size: 26px; font-weight: 800; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; color: var(--ink); text-align: center;
+  background: var(--surface); border: 1px solid var(--line); caret-color: var(--accent-ink);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.rate-input.need { border-color: var(--warn); }
+.rate-input::placeholder { color: var(--hint); opacity: 1; }
+.rate-input:focus-visible { outline: 0; border-color: var(--accent-ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent); }
+/* Tasa personalizada cabe entera en una pantalla (como la calculadora): mismo alto fijo que el diseño base de la app
+   y medidas algo más compactas; --ui (app.js) la encoge por igual en pantallas más pequeñas */
+#customView .view-in { height: calc(100vh / var(--ui, 1)); height: calc(100dvh / var(--ui, 1)); min-height: 760px; gap: 14px; padding-bottom: 16px; }
+#customView .view-title { font-size: 22px; white-space: nowrap; }
+#customView .rate-input { height: 52px; font-size: 24px; }
+#customView .row { padding-top: 8px; padding-bottom: 8px; }
+#customView .amount { font-size: 34px; }
+#customView .amount.long { font-size: 26px; }
+#customView .sep { height: 20px; }
+#customView .cmp { gap: 8px; }
+#customView .cmp-tab { min-height: 40px; }
+#customView .cmp-line { padding-top: 7px; padding-bottom: 7px; }
+#customView .cmp-v { font-size: 19px; }
+#customView .cmp-diff { padding: 10px 14px; }
+#customView .change-main { font-size: 19px; }
+
+/* Comparación con la tasa oficial: selector de moneda y dos líneas (tu tasa / la oficial) con la diferencia debajo */
+.cmp { display: flex; flex-direction: column; gap: 10px; }
+.view.open .cmp { animation: panel 0.5s var(--ease) 0.18s both; }
+.cmp[data-cur="EUR"] { --accent: var(--blue); --accent-ink: var(--blue-ink); }
+.cmp[data-cur="USDT"] { --accent: var(--green); --accent-ink: var(--green-ink); }
+.cmp-title { margin: 0 0 0 4px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.cmp-tabs { position: relative; display: flex; padding: 4px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); }
+.cmp-tabs::before { /* indicador: se desliza entre las tres monedas */
+  content: ""; position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / 3); border-radius: 12px;
+  background: var(--paper); box-shadow: 0 1px 6px -2px var(--shadow); transition: transform 0.3s var(--ease-move);
+}
+.cmp-tabs[data-i="1"]::before { transform: translateX(100%); }
+.cmp-tabs[data-i="2"]::before { transform: translateX(200%); }
+.cmp-tab {
+  position: relative; flex: 1; min-height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 6px;
+  font-size: 14px; font-weight: 700; color: var(--muted); transition: color 0.25s var(--ease);
+}
+.cmp-tab[aria-selected="true"] { color: var(--accent-ink); }
+.cmp-card {
+  display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: 24px;
+  background: var(--paper); border: 1px solid var(--line); box-shadow: 0 10px 26px -12px var(--shadow);
+}
+/* Cada línea: nombre a la izquierda y total a la derecha; el detalle (monto × tasa) ocupa todo el ancho debajo */
+.cmp-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; column-gap: 12px; row-gap: 2px; padding: 10px 12px; }
+.cmp-k { display: contents; }
+.cmp-k b { grid-area: 1 / 1; font-size: 15px; font-weight: 700; }
+.cmp-k small { grid-area: 2 / 1 / 3 / 3; font-size: 12px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cmp-v { grid-area: 1 / 2; font-size: 20px; font-weight: 800; letter-spacing: -0.4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* la diferencia no juzga (subir o bajar no es bueno ni malo aquí): usa el color de la moneda elegida */
+.cmp-diff { display: flex; align-items: center; gap: 8px; border-radius: 18px; }
+.change.cmp-diff[data-tone="up"], .change.cmp-diff[data-tone="down"] { --tone: var(--accent-ink); }
 
 /* Barra de fecha */
 .datebar-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
@@ -254,10 +352,6 @@ button:disabled { cursor: default; }
 
 .sep { position: relative; height: 28px; display: grid; place-items: center; }
 .sep::before { content: ""; position: absolute; left: 20px; right: 20px; top: 50%; height: 1px; background: var(--line); }
-.rate-pill {
-  position: relative; padding: 4px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line);
-  font-size: 12px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums;
-}
 
 .pill {
   align-self: center; min-height: 40px; padding: 10px 16px; border-radius: 999px; background: var(--surface);
@@ -283,24 +377,8 @@ button:disabled { cursor: default; }
   background: color-mix(in srgb, var(--tone) 12%, transparent); font-variant-numeric: tabular-nums;
 }
 
-/* Selector de modo */
-.modes { position: relative; display: flex; padding: 4px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); }
-.modes::before { /* indicador: se desliza entre las dos opciones */
-  content: ""; position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); border-radius: 12px;
-  background: var(--paper); box-shadow: 0 1px 6px -2px var(--shadow);
-  transition: transform 0.3s var(--ease-move);
-}
-.modes[data-mode="calc"]::before { transform: translateX(100%); }
-.mode-btn { position: relative; flex: 1; min-height: 44px; border-radius: 12px; font-size: 14px; font-weight: 700; color: var(--muted); transition: color 0.25s var(--ease); }
-.mode-btn[aria-selected="true"] { color: var(--accent-ink); }
-
 /* Modo calculadora */
 .pad { display: flex; flex-direction: column; gap: 10px; }
-/* Indicador de página: dos casillas iguales, cada punto centrado en la suya (simétrico respecto al centro) */
-.dots { display: flex; justify-content: center; align-items: center; }
-.dot-slot { width: 26px; height: 24px; display: grid; place-items: center; border-radius: 999px; }
-.dot { display: block; width: 5px; height: 5px; border-radius: 999px; background: color-mix(in srgb, var(--muted) 40%, transparent); }
-.dot-on { width: 16px; background: var(--accent-ink); }
 .expr {
   padding: 12px 4px 0; text-align: right; font-weight: 800; letter-spacing: -1.5px; line-height: 1.15;
   font-variant-numeric: tabular-nums; overflow-wrap: anywhere; word-break: break-all;
@@ -344,7 +422,7 @@ button:disabled { cursor: default; }
 .tick { animation: tick 0.26s var(--ease) both; }
 @keyframes tick { from { opacity: 0; transform: translate(var(--dx, 0px), 7px); } }
 
-/* Cambio de modo: el panel nuevo aparece subiendo suavemente y las teclas en cascada corta */
+/* Entrada de paneles: aparecen subiendo suavemente */
 @keyframes panel { from { opacity: 0; transform: translateY(10px) scale(0.985); } }
 
 /* Primera carga: las secciones entran en escalera */
@@ -353,20 +431,16 @@ button:disabled { cursor: default; }
 /* Cambio de tema: fundido suave de toda la pantalla (View Transitions) */
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.35s; animation-timing-function: var(--ease); }
 
-/* ---------- Calculadora: todo cabe en una pantalla fija, sin deslizar ----------
-   Las tarjetas y la variación dan paso a la franja de monedas (Bs ⇄ $), el selector se oculta (se vuelve
-   deslizando, con atrás o con el punto) y el teclado reparte el alto que queda (entre 34 y 72 px por tecla). */
+/* ---------- Calculadora (pantalla aparte): todo cabe en una pantalla fija, sin deslizar ----------
+   La franja de monedas (Bs ⇄ $) va bajo la barra de fecha y el teclado reparte el alto que queda (entre 34 y 72 px por tecla). */
 .app { position: relative; overflow-x: clip; touch-action: pan-y; }
-body[data-mode="calc"] .app { height: calc(100vh / var(--ui, 1)); height: calc(100dvh / var(--ui, 1)); min-height: 760px; }
-body[data-mode="calc"] .install,
-body[data-mode="calc"] .page-clip,
-body[data-mode="calc"] .modes { display: none; }
-body[data-mode="calc"] .pad { flex: 1 1 0; min-height: 0; }
-body[data-mode="calc"] .expr { margin-top: auto; }
-body[data-mode="calc"] .keys {
+#calcView .view-in { height: calc(100vh / var(--ui, 1)); height: calc(100dvh / var(--ui, 1)); min-height: 760px; }
+#calcView .pad { flex: 1 1 0; min-height: 0; }
+#calcView .expr { margin-top: auto; }
+#calcView .keys {
   flex: 1 1 0; min-height: calc(6 * 34px + 5 * 8px); max-height: calc(6 * 72px + 5 * 8px); grid-template-rows: repeat(6, minmax(0, 1fr));
 }
-body[data-mode="calc"] .key { height: auto; min-height: 0; }
+#calcView .key { height: auto; min-height: 0; }
 
 /* Franja de monedas: dos círculos con solo el símbolo y la flecha en medio, centrados */
 .cstrip { display: flex; justify-content: center; padding: 4px 0; }
@@ -406,9 +480,6 @@ body[data-mode="calc"] .key { height: auto; min-height: 0; }
 .cmi-t b { font-size: 15px; font-weight: 600; color: var(--ink); }
 .cmi[aria-checked="true"] .cmi-t b { font-weight: 800; }
 .cmi-t small { font-size: 12px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
-
-/* Copias de los paneles que salen al cambiar de apartado (app.js las anima y las quita) */
-.slide-ghost { position: absolute; margin: 0 !important; pointer-events: none; }
 
 [hidden] { display: none !important; }
 

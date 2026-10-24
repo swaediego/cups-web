@@ -36,24 +36,13 @@
 
   <header class="header">
     <h1 class="brand">cups</h1>
-    <div class="info-wrap">
-      <button class="icon-btn" id="info" type="button" aria-label="Información de la app" aria-haspopup="dialog" aria-expanded="false" aria-controls="infoCard">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6"/><circle cx="12" cy="7.4" r="0.9" fill="currentColor" stroke="none"/></svg>
-      </button>
-      <div class="info-card" id="infoCard" role="dialog" aria-label="Información de la app">
-        <strong class="info-name">cups</strong>
-        <span class="info-version" id="infoVersion"></span>
-      </div>
-    </div>
-    <button class="icon-btn" id="theme" type="button" aria-label="Tema: automático" title="Tema: automático">
-      <svg class="auto" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17Z" fill="currentColor"/></svg>
-      <svg class="moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7Z"/></svg>
-      <svg class="sun" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>
-    </button>
     <button class="icon-btn" id="refresh" type="button" aria-label="Actualizar tasas">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M19.5 3v4.5H15"/>
       </svg>
+    </button>
+    <button class="icon-btn" id="menu" type="button" aria-label="Abrir menú" aria-haspopup="dialog" aria-expanded="false" aria-controls="drawer">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><path d="M4.5 7h15M4.5 12h15M4.5 17h15"/></svg>
     </button>
   </header>
 
@@ -113,30 +102,6 @@
   </section>
   </div></div>
 
-  <!-- Calculadora: las monedas ocupan el lugar de las tarjetas. Bs o ⇄ invierten; la moneda extranjera abre la lista -->
-  <section class="cstrip" id="cstrip" aria-label="Monedas de la calculadora" data-dir="in" hidden>
-    <div class="cpair" id="cpair">
-      <button class="cbub c-bs" id="cBs" type="button" data-cur="BS" aria-label="Bolívares. Toca para invertir la conversión">
-        <span class="coin coin-bs">Bs</span>
-      </button>
-      <button class="cswap" id="cSwap" type="button" aria-label="Invertir conversión">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5h15M15.5 5l3.5 3.5-3.5 3.5M20 15.5H5M8.5 12 5 15.5 8.5 19"/></svg>
-      </button>
-      <div class="cfor-wrap" id="cForWrap">
-        <button class="cbub c-for" id="cFor" type="button" data-cur="USD" aria-haspopup="menu" aria-expanded="false" aria-label="Moneda: Dólar. Toca para elegir">
-          <span class="coin coin-usd" id="cForCoin">$</span>
-          <span class="cchev" aria-hidden="true"><svg viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 3.2 5 6.8l3.5-3.6"/></svg></span>
-        </button>
-        <div class="cmenu" id="cMenu" role="menu" aria-label="Elegir moneda" hidden></div>
-      </div>
-    </div>
-  </section>
-
-  <div class="modes" role="group" aria-label="Modo">
-    <button class="mode-btn" data-mode="convert" aria-selected="true" type="button">Convertir</button>
-    <button class="mode-btn" data-mode="calc" aria-selected="false" type="button">Calculadora</button>
-  </div>
-
   <section class="calc" id="conv" aria-label="Convertidor">
     <div class="row" data-field="foreign">
       <div class="row-main">
@@ -150,7 +115,7 @@
       <button class="copy-btn" id="copyForeign" type="button" aria-label="Copiar Dólar" disabled></button>
     </div>
 
-    <div class="sep"><span class="rate-pill" id="ratePill">—</span></div>
+    <div class="sep"></div>
 
     <div class="row" data-field="bs">
       <div class="row-main">
@@ -162,39 +127,6 @@
         <input class="amount" id="bsInput" type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="0,00" maxlength="14">
       </div>
       <button class="copy-btn" id="copyBs" type="button" aria-label="Copiar Bolívares" disabled></button>
-    </div>
-  </section>
-
-  <section class="pad" id="pad" aria-label="Calculadora" hidden>
-    <!-- Indicador de página: dice que hay otra página al lado; el primer punto vuelve a Convertir -->
-    <div class="dots">
-      <button class="dot-slot" id="dotBack" type="button" aria-label="Volver a Convertir"><i class="dot"></i></button>
-      <span class="dot-slot" aria-hidden="true"><i class="dot dot-on"></i></span>
-    </div>
-    <div class="expr" id="expr" data-size="l">0</div>
-    <div class="converted" id="converted" aria-live="polite">$ 0,00</div>
-    <div class="keys" id="keys">
-      <button class="key key-c" data-k="C" type="button" aria-label="Borrar todo">AC</button>
-      <button class="key key-back" data-k="⌫" type="button" aria-label="Borrar un dígito, mantener para borrar todo">⌫</button>
-      <button class="key key-op" data-k="÷" type="button" aria-label="Dividir">÷</button>
-      <button class="key key-op" data-k="(" type="button" aria-label="Abrir paréntesis">(</button>
-      <button class="key key-op" data-k=")" type="button" aria-label="Cerrar paréntesis">)</button>
-      <button class="key key-op" data-k="%" type="button" aria-label="Porcentaje">%</button>
-      <button class="key key-op" data-k="×" type="button" aria-label="Multiplicar">×</button>
-      <button class="key" data-k="7" type="button">7</button>
-      <button class="key" data-k="8" type="button">8</button>
-      <button class="key" data-k="9" type="button">9</button>
-      <button class="key key-op" data-k="−" type="button" aria-label="Restar">−</button>
-      <button class="key" data-k="4" type="button">4</button>
-      <button class="key" data-k="5" type="button">5</button>
-      <button class="key" data-k="6" type="button">6</button>
-      <button class="key key-op" data-k="+" type="button" aria-label="Sumar">+</button>
-      <button class="key" data-k="1" type="button">1</button>
-      <button class="key" data-k="2" type="button">2</button>
-      <button class="key" data-k="3" type="button">3</button>
-      <button class="key key-eq" data-k="=" type="button" aria-label="Igual">=</button>
-      <button class="key key-zero" data-k="0" type="button">0</button>
-      <button class="key" data-k="," type="button" aria-label="Coma decimal">,</button>
     </div>
   </section>
 
@@ -213,7 +145,202 @@
     </button>
   </aside>
 </div>
-<div class="scrim" id="infoScrim"></div>
+
+<!-- Menú lateral: tasa personalizada, apariencia (claro / oscuro) e información de la versión -->
+<div class="drawer-scrim" id="drawerScrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-label="Menú" tabindex="-1" inert>
+  <div class="drawer-head">
+    <strong class="drawer-title">Menú</strong>
+    <button class="icon-btn" id="menuClose" type="button" aria-label="Cerrar menú">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <nav class="drawer-list">
+    <button class="mi" id="calcOpen" type="button">
+      <span class="mi-ic mi-gold"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="2.8" width="15" height="18.4" rx="3.2"/><path d="M8 7.5h8"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 16h.01M12 16h.01M15.5 16h.01" stroke-width="2.6"/></svg></span>
+      <span class="mi-t"><b>Calculadora</b><small>Suma, resta y convierte al instante</small></span>
+      <svg class="mi-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9.5 5 7 7-7 7"/></svg>
+    </button>
+    <button class="mi" id="customOpen" type="button">
+      <span class="mi-ic mi-gold"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/></svg></span>
+      <span class="mi-t"><b>Tasa personalizada</b><small>Calcula con la tasa que tú elijas</small></span>
+      <svg class="mi-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9.5 5 7 7-7 7"/></svg>
+    </button>
+    <button class="mi" id="theme" type="button" aria-label="Tema: automático" title="Tema: automático">
+      <span class="mi-ic theme-ic">
+        <svg class="auto" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17Z" fill="currentColor"/></svg>
+        <svg class="moon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7Z"/></svg>
+        <svg class="sun" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>
+      </span>
+      <span class="mi-t"><b>Apariencia</b><small id="themeValue">Automático</small></span>
+    </button>
+    <div class="mi mi-static">
+      <span class="mi-ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6"/><circle cx="12" cy="7.4" r="0.9" fill="currentColor" stroke="none"/></svg></span>
+      <span class="mi-t"><b>cups</b><small id="infoVersion"></small></span>
+    </div>
+  </nav>
+</aside>
+
+<!-- Calculadora: pantalla aparte, igual que Tasa personalizada. Tiene su propia barra de fecha (comparte la fecha con la principal) -->
+<section class="view" id="calcView" role="dialog" aria-label="Calculadora" inert>
+  <div class="view-in">
+    <header class="view-head">
+      <button class="icon-btn" id="calcBack" type="button" aria-label="Volver">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5 7.5 12l7 7"/></svg>
+      </button>
+      <h2 class="view-title">Calculadora</h2>
+    </header>
+
+    <section class="datebar-wrap" aria-label="Fecha de la tasa">
+      <div class="datebar">
+        <button class="nav-btn" id="calPrev" type="button" aria-label="Tasa del día anterior">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5 7.5 12l7 7"/></svg>
+        </button>
+
+        <div class="date-center">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="4.5" width="18" height="16" rx="3.5"/><path d="M3 10h18M8 2.5v4M16 2.5v4"/>
+          </svg>
+          <span class="date-text">
+            <span class="date-label" id="calDateLabel">Cargando…</span>
+            <span class="date-value" id="calDateValue">—</span>
+          </span>
+          <input class="date-input" id="calDatePick" type="date" aria-label="Elegir fecha de la tasa">
+        </div>
+
+        <button class="nav-btn" id="calNext" type="button" aria-label="Tasa del día siguiente">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9.5 5 7 7-7 7"/></svg>
+          <span class="badge" id="calBadge" hidden></span>
+        </button>
+      </div>
+      <button class="link-btn" id="calGoToday" type="button" aria-label="Volver a la tasa de hoy" hidden>↩ Hoy</button>
+    </section>
+
+    <!-- Monedas: Bs o ⇄ invierten la conversión; la moneda extranjera abre la lista -->
+    <section class="cstrip" id="cstrip" aria-label="Monedas de la calculadora" data-dir="in">
+      <div class="cpair" id="cpair">
+        <button class="cbub c-bs" id="cBs" type="button" data-cur="BS" aria-label="Bolívares. Toca para invertir la conversión">
+          <span class="coin coin-bs">Bs</span>
+        </button>
+        <button class="cswap" id="cSwap" type="button" aria-label="Invertir conversión">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5h15M15.5 5l3.5 3.5-3.5 3.5M20 15.5H5M8.5 12 5 15.5 8.5 19"/></svg>
+        </button>
+        <div class="cfor-wrap" id="cForWrap">
+          <button class="cbub c-for" id="cFor" type="button" data-cur="USD" aria-haspopup="menu" aria-expanded="false" aria-label="Moneda: Dólar. Toca para elegir">
+            <span class="coin coin-usd" id="cForCoin">$</span>
+            <span class="cchev" aria-hidden="true"><svg viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 3.2 5 6.8l3.5-3.6"/></svg></span>
+          </button>
+          <div class="cmenu" id="cMenu" role="menu" aria-label="Elegir moneda" hidden></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pad" id="pad" aria-label="Calculadora">
+      <div class="expr" id="expr" data-size="l">0</div>
+      <div class="converted" id="converted" aria-live="polite">$ 0,00</div>
+      <div class="keys" id="keys">
+        <button class="key key-c" data-k="C" type="button" aria-label="Borrar todo">AC</button>
+        <button class="key key-back" data-k="⌫" type="button" aria-label="Borrar un dígito, mantener para borrar todo">⌫</button>
+        <button class="key key-op" data-k="÷" type="button" aria-label="Dividir">÷</button>
+        <button class="key key-op" data-k="(" type="button" aria-label="Abrir paréntesis">(</button>
+        <button class="key key-op" data-k=")" type="button" aria-label="Cerrar paréntesis">)</button>
+        <button class="key key-op" data-k="%" type="button" aria-label="Porcentaje">%</button>
+        <button class="key key-op" data-k="×" type="button" aria-label="Multiplicar">×</button>
+        <button class="key" data-k="7" type="button">7</button>
+        <button class="key" data-k="8" type="button">8</button>
+        <button class="key" data-k="9" type="button">9</button>
+        <button class="key key-op" data-k="−" type="button" aria-label="Restar">−</button>
+        <button class="key" data-k="4" type="button">4</button>
+        <button class="key" data-k="5" type="button">5</button>
+        <button class="key" data-k="6" type="button">6</button>
+        <button class="key key-op" data-k="+" type="button" aria-label="Sumar">+</button>
+        <button class="key" data-k="1" type="button">1</button>
+        <button class="key" data-k="2" type="button">2</button>
+        <button class="key" data-k="3" type="button">3</button>
+        <button class="key key-eq" data-k="=" type="button" aria-label="Igual">=</button>
+        <button class="key key-zero" data-k="0" type="button">0</button>
+        <button class="key" data-k="," type="button" aria-label="Coma decimal">,</button>
+      </div>
+    </section>
+  </div>
+</section>
+
+<!-- Tasa personalizada: pantalla propia que se desliza sobre la app (tasa × monto = bolívares) -->
+<section class="view" id="customView" role="dialog" aria-label="Tasa personalizada" inert>
+  <div class="view-in">
+    <header class="view-head">
+      <button class="icon-btn" id="customBack" type="button" aria-label="Volver">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5 7.5 12l7 7"/></svg>
+      </button>
+      <h2 class="view-title">Tasa personalizada</h2>
+      <button class="icon-btn" id="customClear" type="button" aria-label="Reiniciar montos" title="Reiniciar montos" hidden>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4.5 3v4.5H9"/></svg>
+      </button>
+    </header>
+
+    <!-- Tu tasa [campo]: va fuera de la tarjeta para no pegar tres cajas seguidas -->
+    <div class="rate-line">
+      <label class="rate-label" for="rateInput">Tu tasa</label>
+      <input class="rate-input" id="rateInput" type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="0,00" maxlength="14">
+    </div>
+
+    <section class="calc" aria-label="Calculadora con tasa personalizada">
+      <div class="row" data-field="foreign">
+        <div class="row-main">
+          <div class="row-label">
+            <span class="coin coin-sm coin-usd">$</span>
+            <label for="cForeignInput">Dólar</label>
+            <span class="copied" id="cCopiedForeign" aria-live="polite"></span>
+          </div>
+          <input class="amount" id="cForeignInput" type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="0,00" maxlength="14">
+        </div>
+        <button class="copy-btn" id="cCopyForeign" type="button" aria-label="Copiar Dólar" disabled></button>
+      </div>
+
+      <div class="sep"></div>
+
+      <div class="row" data-field="bs">
+        <div class="row-main">
+          <div class="row-label">
+            <span class="coin coin-sm coin-bs">Bs</span>
+            <label for="cBsInput">Bolívares</label>
+            <span class="copied" id="cCopiedBs" aria-live="polite"></span>
+          </div>
+          <input class="amount" id="cBsInput" type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="0,00" maxlength="14">
+        </div>
+        <button class="copy-btn" id="cCopyBs" type="button" aria-label="Copiar Bolívares" disabled></button>
+      </div>
+    </section>
+
+    <!-- Comparación: el mismo monto, a tu tasa y a la tasa de la moneda elegida -->
+    <section class="cmp" id="cmp" data-cur="USD" aria-label="Comparar con la tasa oficial">
+      <h3 class="cmp-title">Comparar con la tasa de</h3>
+      <div class="cmp-tabs" id="cmpTabs" role="tablist" aria-label="Moneda de comparación" data-i="0">
+        <button class="cmp-tab" role="tab" data-cur="USD" aria-selected="true" type="button"><span class="coin coin-sm coin-usd">$</span>Dólar</button>
+        <button class="cmp-tab" role="tab" data-cur="EUR" aria-selected="false" type="button"><span class="coin coin-sm coin-eur">€</span>Euro</button>
+        <button class="cmp-tab" role="tab" data-cur="USDT" aria-selected="false" type="button"><span class="coin coin-sm coin-usdt">₮</span>USDT</button>
+      </div>
+      <div class="cmp-card" aria-live="polite">
+        <div class="cmp-line">
+          <span class="cmp-k"><b>Tu tasa</b><small id="cmpMineSub">—</small></span>
+          <span class="cmp-v" id="cmpMine">—</span>
+        </div>
+        <div class="cmp-line">
+          <span class="cmp-k"><b id="cmpMarketName">Dólar BCV</b><small id="cmpMarketSub">—</small></span>
+          <span class="cmp-v" id="cmpMarket">—</span>
+        </div>
+        <div class="change cmp-diff" id="cmpDiff" data-tone="flat">
+          <div class="change-text">
+            <span class="change-top" id="cmpDiffTop">Diferencia</span>
+            <span class="change-main" id="cmpDiffMain">—</span>
+          </div>
+          <span class="change-pct" id="cmpDiffPct">—</span>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</section>
 
 <script src="vendor/motion.js"></script>
 <script src="app.js"></script>
