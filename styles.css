@@ -159,9 +159,8 @@ button.mi:active { transform: scale(0.97); }
 
 /* Tasa personalizada: pantalla completa que se desliza desde la derecha (mismo tamaño y relleno que .app) */
 .view {
-  --accent: var(--gold); --accent-ink: var(--gold-ink);
   position: fixed; inset: 0; z-index: 50; overflow-y: auto; overscroll-behavior: contain;
-  background: radial-gradient(120% 60% at 10% -10%, color-mix(in srgb, var(--gold) 17%, transparent), transparent 70%), var(--paper);
+  background: radial-gradient(120% 60% at 10% -10%, color-mix(in srgb, var(--accent) 17%, transparent), transparent 70%), var(--paper);
   transform: translateX(100%); visibility: hidden;
   transition: transform 0.4s var(--ease-move), visibility 0s 0.4s;
 }
@@ -190,6 +189,8 @@ button.mi:active { transform: scale(0.97); }
 .rate-input:focus-visible { outline: 0; border-color: var(--accent-ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent); }
 /* Tasa personalizada cabe entera en una pantalla (como la calculadora): mismo alto fijo que el diseño base de la app
    y medidas algo más compactas; --ui (app.js) la encoge por igual en pantallas más pequeñas */
+/* Tasa personalizada es siempre en dólares: dorado. La Calculadora sigue el color de la moneda elegida */
+#customView { --accent: var(--gold); --accent-ink: var(--gold-ink); }
 #customView .view-in { height: calc(100vh / var(--ui, 1)); height: calc(100dvh / var(--ui, 1)); min-height: 760px; gap: 14px; padding-bottom: 16px; }
 #customView .view-title { font-size: 22px; white-space: nowrap; }
 #customView .rate-input { height: 52px; font-size: 24px; }
