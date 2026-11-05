@@ -173,8 +173,8 @@
     if (c === "USDT" && !state.pinned && state.usdtLive) return { date: state.usdtLive[0], value: state.usdtLive[1] };
     const s = selectedDate(), list = state.history[c];
     if (!s || !list.length) return null;
-    for (let i = list.length - 1; i >= 0; i--) if (list[i][0] <= s) return { date: list[i][0], value: list[i][1] };
-    return { date: list[0][0], value: list[0][1] };
+    for (let i = list.length - 1; i >= 0; i--) if (list[i][0] <= s) return { date: list[i][0], value: list[i][1], approx: !!list[i][2] };
+    return { date: list[0][0], value: list[0][1], approx: !!list[0][2] };
   }
 
   // Cambio frente a la publicación anterior de la misma moneda
@@ -200,6 +200,8 @@
 
   /* ---------- Números ---------- */
   const money = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  // Tasas: se muestran con todos los decimales que entrega la fuente (mínimo 2, máximo 8), sin redondear
+  const rateFmt = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 8 });
   const parse = (s) => { const v = parseFloat(s.replace(",", ".")); return Number.isFinite(v) ? v : null; };
   const fmt = (v) => v.toFixed(2).replace(".", ",");
 
@@ -209,7 +211,7 @@
   function sanitizeSeries(rows) {
     const out = [];
     for (const [d, raw] of rows || []) {
-      let v = Number(raw);
+      let v = Number(raw), approx = false;
       if (!Number.isFinite(v) || v <= 0) continue;
       const prev = out.length ? out[out.length - 1][1] : null;
       if (prev !== null) {
@@ -218,9 +220,10 @@
           const fixed = [v * 1000, v / 1000, v * 100, v / 100].find(fits);
           if (fixed === undefined) continue;
           v = fixed;
+          approx = true; // corregido de escala: la fuente trajo menos decimales de los reales
         }
       }
-      out.push([d, v]);
+      out.push(approx ? [d, v, true] : [d, v]);
     }
     return out;
   }
@@ -275,11 +278,23 @@
     return { date: `${m[3]}-${pad2(mi + 1)}-${pad2(Number(m[1]))}`, rates: { USD: Number(o.tasas && o.tasas.USD), EUR: Number(o.tasas && o.tasas.EUR) } };
   }
 
+  // La segunda fuente trae la tasa con todos sus decimales: si tenemos esa fecha, se usa su valor exacto
+  function useExact(h, n) {
+    const out = { ...h };
+    for (const c of ["USD", "EUR"]) {
+      const v = n.rates[c];
+      if (!Number.isFinite(v) || v <= 0) continue;
+      out[c] = h[c].map((e) => (e[0] === n.date && Math.abs(v / e[1] - 1) < 0.01 ? [e[0], v] : e));
+    }
+    return out;
+  }
+
   // Si aún no hay tasa futura guardada, la busca en la segunda fuente; descarta valores muy distintos a la última tasa
   async function addNext(h) {
     const last = [...h.USD, ...h.EUR].map((e) => e[0]).sort().pop() || null;
-    if (last && last > todayISO()) return h;
+    if (last && last > todayISO()) { const n0 = await fetchNextBcv().catch(() => null); return n0 ? useExact(h, n0) : h; }
     const n = await fetchNextBcv().catch(() => null);
+    if (n) h = useExact(h, n);
     if (!n || (last && n.date <= last)) return h;
     const out = { ...h };
     for (const c of ["USD", "EUR"]) {
@@ -368,7 +383,8 @@
     // Tarjetas
     for (const c of Object.keys(CUR)) {
       const r = rateFor(c);
-      setText($("rate" + c), r ? money.format(r.value) : "—");
+      setText($("rate" + c), r ? (r.approx ? "≈" : "") + rateFmt.format(r.value) : "—");
+      $("rate" + c).classList.toggle("long", !!r && rateFmt.format(r.value).length > 9);
       setText($("date" + c), !r ? "sin datos" : c === "USDT" && r.date === todayISO() ? "en vivo" : shortDate(r.date));
     }
     $("page").querySelectorAll(".tile").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.cur === cur)));
@@ -682,7 +698,7 @@
       const r = rateFor(c);
       return `<button class="cmi" role="menuitemradio" type="button" data-cur="${c}" aria-checked="${c === state.currency}">` +
         `<span class="coin coin-${c.toLowerCase()}">${CUR[c].symbol}</span>` +
-        `<span class="cmi-t"><b>${CUR[c].label}</b><small>${r ? "Bs. " + money.format(r.value) : "sin datos"}</small></span></button>`;
+        `<span class="cmi-t"><b>${CUR[c].label}</b><small>${r ? "Bs. " + rateFmt.format(r.value) : "sin datos"}</small></span></button>`;
     }).join("");
     el.cMenu.hidden = false;
     el.cFor.setAttribute("aria-expanded", "true");
@@ -827,8 +843,8 @@
     const when = !r ? "" : c === "USDT" && r.date === todayISO() ? "en vivo" : shortDate(r.date);
 
     setText($("cmpMarketName"), name);
-    setText($("cmpMineSub"), has ? `Bs. ${money.format(rate)}` : "—");
-    setText($("cmpMarketSub"), r ? `Bs. ${money.format(r.value)} · ${when}` : "sin datos");
+    setText($("cmpMineSub"), has ? `Bs. ${rateFmt.format(rate)}` : "—");
+    setText($("cmpMarketSub"), r ? `Bs. ${rateFmt.format(r.value)} · ${when}` : "sin datos");
     setText($("cmpMine"), ready ? `Bs. ${money.format(mine)}` : "—");
     setText($("cmpMarket"), ready ? `Bs. ${money.format(market)}` : "—");
 

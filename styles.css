@@ -299,6 +299,7 @@ button.mi:active { transform: scale(0.97); }
 .tile-name { font-size: 13px; font-weight: 600; color: var(--muted); }
 .tile[aria-selected="true"] .tile-name { color: var(--ink); }
 .tile-rate { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; }
+.tile-rate.long { font-size: 15px; letter-spacing: -0.6px; }
 .tile-date { font-size: 12px; font-weight: 500; color: var(--muted); min-height: 1em; }
 
 .coin {
@@ -488,6 +489,7 @@ button.mi:active { transform: scale(0.97); }
   .brand { font-size: 26px; }
   .tile { padding: 14px; }
   .tile-rate { font-size: 16px; }
+  .tile-rate.long { font-size: 12.5px; }
   .app { padding-left: calc(env(safe-area-inset-left) + 14px); padding-right: calc(env(safe-area-inset-right) + 14px); }
   .amount { font-size: 32px; }
   .amount.long { font-size: 24px; }
