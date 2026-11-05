@@ -200,8 +200,8 @@
 
   /* ---------- Números ---------- */
   const money = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  // Tasas: se muestran con todos los decimales que entrega la fuente (mínimo 2, máximo 8), sin redondear
-  const rateFmt = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 8 });
+  // Tasas: se muestran con 2 decimales como máximo (el valor guardado y los cálculos usan la tasa exacta de la fuente)
+  const rateFmt = money;
   const parse = (s) => { const v = parseFloat(s.replace(",", ".")); return Number.isFinite(v) ? v : null; };
   const fmt = (v) => v.toFixed(2).replace(".", ",");
 
