@@ -55,7 +55,10 @@
 
   try {
     const saved = JSON.parse(localStorage.getItem(STORE) || "null");
-    if (saved && saved.USD && saved.EUR) state.history = { USDT: [], ...saved };
+    if (saved && saved.USD && saved.EUR) {
+      state.history = { USDT: [], ...saved };
+      for (const c of ["USD", "EUR"]) state.history[c] = sanitizeSeries(state.history[c]);
+    }
     const live = JSON.parse(localStorage.getItem(STORE_LIVE) || "null");
     if (Array.isArray(live) && live.length === 2) state.usdtLive = live;
     const smp = JSON.parse(localStorage.getItem(STORE_SAMPLES) || "[]");
@@ -200,6 +203,28 @@
   const parse = (s) => { const v = parseFloat(s.replace(",", ".")); return Number.isFinite(v) ? v : null; };
   const fmt = (v) => v.toFixed(2).replace(".", ",");
 
+  // Valida una serie [[fecha, valor], ...] ascendente. Una tasa diaria nunca se mueve más del doble de un día
+  // a otro; si un valor se sale de ese rango suele ser un error de escala de la fuente (p. ej. "1.006" en vez de
+  // 1.006,00 → 1006). Se intenta corregir por factores de 1000; si ni así encaja, se descarta.
+  function sanitizeSeries(rows) {
+    const out = [];
+    for (const [d, raw] of rows || []) {
+      let v = Number(raw);
+      if (!Number.isFinite(v) || v <= 0) continue;
+      const prev = out.length ? out[out.length - 1][1] : null;
+      if (prev !== null) {
+        const fits = (x) => x / prev >= 0.5 && x / prev <= 2;
+        if (!fits(v)) {
+          const fixed = [v * 1000, v / 1000, v * 100, v / 100].find(fits);
+          if (fixed === undefined) continue;
+          v = fixed;
+        }
+      }
+      out.push([d, v]);
+    }
+    return out;
+  }
+
   function recalc() {
     const r = rateFor(state.currency);
     if (!r) return;
@@ -232,6 +257,7 @@
       .map((o) => [String(o.fecha).slice(0, 10), Number(o.promedio)])
       .sort((a, b) => (a[0] < b[0] ? -1 : 1));
   }
+  const fetchRatesClean = async (c) => (CUR[c].official ? sanitizeSeries(await fetchRates(c)) : fetchRates(c));
 
   async function fetchLive() {
     const o = (await getJSON(LIVE_URL)).find((x) => x.fuente === "paralelo" && x.promedio != null);
@@ -282,7 +308,7 @@
     if (!silent) { state.error = null; render(); }
     const keys = Object.keys(CUR).filter((c) => CUR[c].official || !officialOnly);
     const [fetched, live] = await Promise.all([
-      Promise.all(keys.map((c) => fetchRates(c).catch(() => null))),
+      Promise.all(keys.map((c) => fetchRatesClean(c).catch(() => null))),
       officialOnly ? null : fetchLive().catch(() => null),
     ]);
     const got = Object.fromEntries(keys.map((c, i) => [c, fetched[i]]));
